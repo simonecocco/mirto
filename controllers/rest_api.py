@@ -19,38 +19,46 @@ def get_samples():
 
     return jsonify({'packets': packets})
 
-@app.route('/service', methods=['POST'])
-def add_service():
-    port = int(request.json['port'])
-    alias = request.json.get('alias', f'service_{port}')
+def iptables_rules_mng(action, port):
     for direction in ['OUTPUT', 'INPUT']:
         for comm_port in ['s', 'd']:
             for proto in ['tcp', 'udp']:
                 run_cmd([
                     'sudo', 'iptables',
-                    '-A', direction,
+                    action, direction,
                     '-p', proto,
                     f'--{comm_port}port', str(port),
                     '-j', 'NFQUEUE', '--queue-num', str(IN_QUEUE)
                 ])
+
+@app.route('/services/<port>', methods=['POST'])
+def add_service(port):
+    port = int(port)
+    alias = request.args.get('alias', f'service_{port}')
+    main_logger.info(f'creating rule for {port} ({alias})')
+    iptables_rules_mng('-A', port)
+
     with main_process_lock:
-        main_shared_dict['services'] = main_shared_dict['services'][port] = alias
+        main_shared_dict['services'][port] = alias
 
     return f'services at {port} ({alias}) added correctly'
 
-@app.route('/service', methods=['GET'])
+@app.route('/services', methods=['GET'])
 def get_services():
     with main_process_lock:
-        services = {
-            service_port:main_shared_dict['services'][service_port]
-            for service_port in main_shared_dict['services'].keys()
-        }
+        return jsonify(dict(main_shared_dict['services']))
 
-    return jsonify(services)
+@app.route('/services/<port>', methods=['DELETE'])
+def delete_service(port):        
+    iptables_rules_mng('-D', port)
 
-@app.route('/service', methods=['DELETE'])
-def delete_service():
-    pass
+    with main_process_lock:
+        try:
+            del main_shared_dict['services'][port]
+        except:
+            pass
+
+    return f'{port} unregistered with success'
 
 @app.route('/rule', methods=['POST'])
 def create_rule():
