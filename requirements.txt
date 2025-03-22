@@ -1,3 +1,4 @@
 flask
 fnfqueue
 dpkt
+numpy
