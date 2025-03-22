@@ -1,6 +1,7 @@
 import fnfqueue
 import dpkt
 from controllers.firewall.firewall_logic import init_fw, judge
+from controllers.fingerprinter import IncrementalKMeans
 
 main_process_lock = None
 main_logger = None
@@ -23,7 +24,7 @@ def init_queue_conn():
 
     return queue_conn
 
-def queues_handler(queue_conn):
+def queues_handler(queue_conn, incremental_kmeans):
     main_logger.info("Queue handler started")
 
     for packet in queue_conn:
@@ -32,7 +33,11 @@ def queues_handler(queue_conn):
         except dpkt.UnpackError:
             continue
 
-        main_logger.debug(ip)
+        #main_logger.debug(ip)
+
+        #cluster_id = incremental_kmeans.assign_cluster(int_packet_payload)
+        #print(f'id:{cluster_id}\n{int_packet_payload == bytes_payload}\n')
+        print('ip', bytes(ip))
         judge(packet, ip)
 
 
@@ -48,4 +53,5 @@ def start_queue(process_lock, logger, shared_dict):
     init_fw(process_lock, logger, shared_dict)
 
     queue_conn = init_queue_conn()
-    queues_handler(queue_conn)
+    incremental_kmeans = IncrementalKMeans(20, 0.1)
+    queues_handler(queue_conn, incremental_kmeans)
