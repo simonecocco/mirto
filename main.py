@@ -10,7 +10,10 @@ def main(args, logger):
     multiprocessing_manager = Manager()
     shared_dict = multiprocessing_manager.dict()
     packet_array = multiprocessing_manager.list()
+    services_dict = multiprocessing_manager.dict()
     shared_dict['packet_array'] = packet_array
+    shared_dict['services'] = services_dict
+
     process_lock = Lock()
     processes = [
         Process(target=start_queue, args=(process_lock, logger, shared_dict)),
