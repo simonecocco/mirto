@@ -14,10 +14,21 @@ def check_hello_world():
 
 @app.route('/packets', methods=['GET'])
 def get_samples():
+    start_offset = request.args.get('from', 0)
     with main_process_lock:
-        packets = list(main_shared_dict['packet_array'])
+        arr_len = len(main_shared_dict['packet_array'])
+        max_len = request.args.get('to', arr_len)
+        assert start_offset + max_len < arr_len
+        packets = [
+            {'n':index+start_offset, 'bytes':pkt_bytes.tolist()}
+            for index, pkt_bytes in enumerate(main_shared_dict['packet_array'][start_offset:start_offset+max_len])
+        ]
 
     return jsonify({'packets': packets})
+
+@app.route('/packets', methods=['DELETE'])
+def delete_pkts():
+    start_offset = request.args.get('from', 0)
 
 def iptables_rules_mng(action, port):
     for direction in ['OUTPUT', 'INPUT']:
