@@ -18,7 +18,7 @@ def get_samples():
     with main_process_lock:
         arr_len = len(main_shared_dict['packet_array'])
         max_len = request.args.get('to', arr_len)
-        assert start_offset + max_len < arr_len
+        assert start_offset + max_len <= arr_len and start_offset >= 0
         packets = [
             {'n':index+start_offset, 'bytes':pkt_bytes.tolist()}
             for index, pkt_bytes in enumerate(main_shared_dict['packet_array'][start_offset:start_offset+max_len])
@@ -29,6 +29,13 @@ def get_samples():
 @app.route('/packets', methods=['DELETE'])
 def delete_pkts():
     start_offset = request.args.get('from', 0)
+    with main_process_lock:
+        arr_len = len(main_shared_dict['packet_array'])
+        max_len = request.args.get('to', arr_len)
+        assert start_offset + max_len <= arr_len and start_offset >= 0
+        del main_shared_dict['packet_array'][start_offset:start_offset+max_len]
+
+    return f'deleted {max_len - start_offset} packets'
 
 def iptables_rules_mng(action, port):
     for direction in ['OUTPUT', 'INPUT']:
