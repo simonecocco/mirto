@@ -2,3 +2,6 @@ flask
 fnfqueue
 dpkt
 numpy
+scipy
+scikit-learn
+matplotlib
