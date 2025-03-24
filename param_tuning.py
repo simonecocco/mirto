@@ -68,7 +68,7 @@ def main(args):
 
     end_time = time.time()
 
-    print_graph(data_reduced, clusters)
+    #print_graph(data_reduced, clusters)
 
     print(f'tempo totale: {end_time-start_time} secondi')
 
