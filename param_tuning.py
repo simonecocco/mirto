@@ -60,11 +60,11 @@ def main(args):
     
     packets, packets_copy = read_pkts(args.f)
     vector = create_feature_vectors(packets)
-    data_reduced, svd = reduce_data(vector, args.n_components)
-    clusters, birch = compute_clusters(data_reduced, args.n_clusters)
+    data_reduced, svd = reduce_data(vector, args.components_n)
+    clusters, birch = compute_clusters(data_reduced, args.clusters_n)
     evaluate(data_reduced, clusters)
-    assigned_labels = assign_labels({i: f'user{i+1}' for i in range(args.n_clusters)}, clusters)
-    print(assign_labels)
+    assigned_labels = assign_labels({i: f'user{i+1}' for i in range(args.clusters_n)}, clusters)
+    #print(assigned_labels)
 
     end_time = time.time()
 
@@ -74,8 +74,8 @@ def main(args):
 
 if __name__ == '__main__':
     aparse = ArgumentParser()
-    aparse.add_argument('--cluster-n', type=int, default=21)
-    aparse.add_argument('--component-n', type=int, default=2)
+    aparse.add_argument('--clusters-n', type=int, default=21)
+    aparse.add_argument('--components-n', type=int, default=2)
     aparse.add_argument('-f', type=str, default='test.pcap')
     args = aparse.parse_args()
 
