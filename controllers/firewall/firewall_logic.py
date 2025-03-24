@@ -17,6 +17,23 @@ def init_fw(process_lock, logger, shared_dict):
     # TODO probabilmente controllando sha del file delle regole
     # TODO se cambia le ricarica
 
-def judge(packet, ip_packet):
+def judge(packet):
+    '''
+    PACKET
+    .drop()
+    .accept(mangle:int=0) -> MANGLE_MARK o MANGLE_PAYLOAD
+    .mangle()
+    .verdict(action:int, mangle:int=0) -> DROP, ACCEPT, REPEAT, STOP
+    Raises NoSuchAttributeException
+    .cap_len -> payload_len
+    .gid -> packet uid
+    .hw_protocol -> HW protocol id
+    .hook -> netfilter hook id
+    .time -> packet arrival time
+    .truncated ->true if packet payload is truncated
+    .uid -> packet uid
+    .mark -> get and set, unsigned integer 32bit
+    .payload -> set value needs to be byte
+    '''
     # TODO
     packet.accept()
