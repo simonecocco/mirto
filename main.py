@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 import logging
 from multiprocessing import Process, Lock, Manager
-from controllers.flux_control import start_queue, IN_QUEUE, OUT_QUEUE
+from controllers.flux_control import start_queue
 from controllers.rest_api import start_rest_api
 from utils.const import *
 

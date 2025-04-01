@@ -28,11 +28,12 @@ class FuocoDiMuro:
         self.main_logger = logger
         self.main_shared_dict = shared_dict
 
-        self.rules = self.main_shared_dict[FW_RULES_LIST]
+        self.rules = {}
         self.fw_str_rules_copy = {rule_str for rule_str in self.main_shared_dict[FW_RULES_LIST]}
-        for rule in rules:
+        for rule in self.main_shared_dict[FW_RULES_LIST]:
             rule_obj = Rule(rule)
             self.rules[rule_obj.get_hash()] = rule_obj
+            self.main_logger.info(f'new rule {rule}')
 
     def get_rules(self):
         return self.rules.values()
@@ -60,7 +61,6 @@ class FuocoDiMuro:
     def __add__(self, rule_str):
         return self.add_rule(rule_str)
 
-    @njit(parallel=True)
     def check_for_new_rule(self):
         actual_rules = set(self.main_shared_dict[FW_RULES_LIST])
         actual_rules_len = len(actual_rules)
@@ -71,13 +71,15 @@ class FuocoDiMuro:
             for added_rule in actual_rules-{rule.rule_str for rule in self.rules.values()}:
                 r = Rule(added_rule)
                 self.rules[r.get_hash()] = r
+                self.main_logger.info(f'new rule {added_rule}')
         else: # actual_rules_len < rules_len: # eliminate
             for deleted_rule in {rule.rule_str for rule in self.rules.values()}-actual_rules:
                 hash_md5 = Rule.compute_md5(deleted_rule)
                 del self.rules[hash_md5]
+                self.main_logger.info(f'deleted rule {deleted_rule}')
 
-    @njit(parallel=True)
     def judge(self, packet, numpy_packet, tags=None):
+        self.check_for_new_rule()
         result = all(rule.judge(packet, numpy_packet, tags) for rule in self.rules.values())
         if result:
             packet.accept()

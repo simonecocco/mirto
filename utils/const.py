@@ -1,4 +1,4 @@
-DEFAULT_QUEUE_NUM
+DEFAULT_QUEUE_NUM = 1
 QUEUE_NUM_KEY = 'queue-num'
 PACKET_ARRAY_KEY = 'packet_array'
 SERVICES_KEY = 'services'

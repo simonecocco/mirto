@@ -25,15 +25,12 @@ def queues_handler(queue_conn, firewall):
     #fingerprinter = Fingerprinter()
 
     for packet in queue_conn:
+        numpy_arr_val = numpy_array([b for b in packet.payload], dtype=ubyte)
         with main_process_lock:
-            main_shared_dict[PACKET_ARRAY_KEY].append(numpy_array([b for b in packet.payload], dtype=ubyte))
+            main_shared_dict[PACKET_ARRAY_KEY].append(numpy_arr_val)
         
         #cluster_id = 
-        judge(packet)
-
-    #TODO logger
-            
-
+        res = firewall.judge(packet, numpy_arr_val)
 
 def start_queue(process_lock, logger, shared_dict):
     global main_process_lock
@@ -44,10 +41,9 @@ def start_queue(process_lock, logger, shared_dict):
     main_logger = logger
     main_shared_dict = shared_dict
 
-    init_fw(process_lock, logger, shared_dict)
-    firewall = FuocoDiMuro(process_lock, logger. shared_dict)
+    firewall = FuocoDiMuro(process_lock, logger, shared_dict)
 
     queue_num = get_queue_num(main_shared_dict)
-    queue_conn = init_queue_conn()
+    queue_conn = init_queue_conn(queue_num)
 
-    queues_handler(queue_conn)
+    queues_handler(queue_conn, firewall)

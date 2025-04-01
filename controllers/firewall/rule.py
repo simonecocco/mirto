@@ -16,7 +16,7 @@ from numpy import in1d, all as numpy_all, array as numpy_array
 # L 15 -> blocca i pacchetti di 15 bytes
 # L 15\nP 8080 -> blocca i pacchetti di 15 byte che arrivano sulla 8080
 # !P 9090 -> blocca tutti i pacchetti eccetto quelli sulla 9090
-# b 0x20 -> blocca tutti i pacchetti che presentano uno spazio nel payload
+# b 0x20... -> blocca tutti i pacchetti che presentano uno spazio nel payload
 # T <tag>
 
 # True -> trigger della regola
@@ -32,23 +32,23 @@ class Rule:
     def __init__(self, rule_str):
         self.rule_str = rule_str
         self.rule_id = Rule.compute_md5(rule_str)
-        self._default_ports_behavior = False # non triggerano
-        self.target_ports = None
+        self._default_ports_behavior = True
+        self.target_ports = {}
         self.checkers = {}
         self.parse_rule(rule_str)
 
     def parse_rule(self, rule_str):
         for line in rule_str.split('\n'):
-            index = 1 if line[index] == '!' else 0
+            index = 1 if line[0] == '!' else 0
             if line[index] == 'P':
                 self._default_ports_behavior = bool(index)
                 self.target_ports = {int(port):not index for port in line[index+2:].split(',')}
             elif line[index] == 'B':
                 pass
             elif line[index] == 'b':
-                pass
+                self.checkers['b'] = lambda numpy_packet:self.check_for_bytes_inside_payload(numpy_packet, line[index+2:], mask=index)
             elif line[index] == 'R':
-                self.checkers
+                pass
             elif line[index] == 'L':
                 if '-' in line:
                     min_int, max_int = line[index+2:].split('-')
@@ -60,12 +60,14 @@ class Rule:
     def check_for_bytes_inside_package(self, numpy_packet, _bytes, mask=0):
         pass
 
-    @njit(parallel=True)
     def check_for_bytes_inside_payload(self, numpy_packet, _bytes, mask=0):
+        if _bytes[0:2] == '0x':
+            _bytes = _bytes[2:]
+            _bytes = [int(h+l, 16) for h, l in zip(_bytes[::2], _bytes[1::2])]
         bytes_len = len(_bytes)
         for numpy_index in range(0, numpy_packet.shape[-1], bytes_len):
             for byte_index in range(bytes_len):
-                if _bytes[byte_index] != numpy_packet[numpy_index+bytes_len]:
+                if _bytes[byte_index] != numpy_packet[numpy_index+bytes_len-1]:
                     break
             else:
                 return True
@@ -78,8 +80,9 @@ class Rule:
         return (max_len > numpy_packet.shape[-1] >= min_len) ^ (not mask)
 
     def judge(self, packet, numpy_packet, tags=set()):
-        tcp_pkt = TCP(packet)
-        return self.target_ports.get(tcp_pkt.sport(), self._default_ports_behavior)\
+        tcp_pkt = TCP(packet.payload)
+        return (self.target_ports.get(tcp_pkt.sport, self._default_ports_behavior)\
+            or self.target_ports.get(tcp_pkt.dport, self._default_ports_behavior))\
             and all(check(numpy_packet) for check in self.checkers.values())
 
     def get_hash(self):

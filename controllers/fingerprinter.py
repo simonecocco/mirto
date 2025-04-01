@@ -1,7 +1,7 @@
 from numpy import array as numpy_array, zeros as numpy_zeros
 from dpkt import pcap
 from sklearn.decomposition import TruncatedSVD
-from sklearn.cluster import 
+#from sklearn.cluster import 
 
 class Fingerprinter:
     def __init__(self, process_lock=None, packet_dict=None, user_num=21, num_pcap_for_train=8000, training_pcap_file=None, n_components=3):
