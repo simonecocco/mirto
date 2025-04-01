@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from subprocess import run as run_cmd
-from controllers.flux_control import IN_QUEUE
+from utils.const import *
 
 app = Flask(__name__)
 
@@ -46,7 +46,7 @@ def iptables_rules_mng(action, port):
                     action, direction,
                     '-p', proto,
                     f'--{comm_port}port', str(port),
-                    '-j', 'NFQUEUE', '--queue-num', str(IN_QUEUE)
+                    '-j', 'NFQUEUE', '--queue-num', str(main_shared_dict.get(QUEUE_NUM_KEY, DEFAULT_QUEUE_NUM))
                 ])
 
 @app.route('/services/<port>', methods=['POST'])
@@ -57,14 +57,14 @@ def add_service(port):
     iptables_rules_mng('-A', port)
 
     with main_process_lock:
-        main_shared_dict['services'][port] = alias
+        main_shared_dict[SERVICES_KEY][port] = alias
 
     return f'services at {port} ({alias}) added correctly'
 
 @app.route('/services', methods=['GET'])
 def get_services():
     with main_process_lock:
-        return jsonify(dict(main_shared_dict['services']))
+        return jsonify(dict(main_shared_dict[SERVICES_KEY]))
 
 @app.route('/services/<port>', methods=['DELETE'])
 def delete_service(port):        
@@ -72,21 +72,24 @@ def delete_service(port):
 
     with main_process_lock:
         try:
-            del main_shared_dict['services'][port]
+            del main_shared_dict[SERVICES_KEY][port]
         except:
             pass
 
     return f'{port} unregistered with success'
 
-@app.route('/rule', methods=['POST'])
-def create_rule():
-    pass
+@app.route('/rule/<rule_str>', methods=['POST'])
+def create_rule(rule_str):
+    if rule_str not in main_shared_dict[FW_RULES_LIST]:
+        main_shared_dict[FW_RULES_LIST].append(rule_str)
+
+    return 'OK'
 
 @app.route('/rule', methods=['GET'])
 def get_rules():
-    pass
+    return jsonify(list(main_shared_dict[FW_RULES_LIST]))
 
-@app.route('/rule', methods=['DELETE'])
+@app.route('/rule/<rule_str>', methods=['DELETE'])
 def delete_rule():
     pass
 
