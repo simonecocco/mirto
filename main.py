@@ -1,18 +1,19 @@
 from argparse import ArgumentParser
 import logging
 from multiprocessing import Process, Lock, Manager
-from controllers.flux_control import start_queue
+from controllers.flux_control import start_queue, IN_QUEUE, OUT_QUEUE
 from controllers.rest_api import start_rest_api
+from utils.const import *
 
 def main(args, logger):
     logger.info("Mirto started")
 
     multiprocessing_manager = Manager()
     shared_dict = multiprocessing_manager.dict()
-    packet_array = multiprocessing_manager.list()
-    services_dict = multiprocessing_manager.dict()
-    shared_dict['packet_array'] = packet_array
-    shared_dict['services'] = services_dict
+    shared_dict[PACKET_ARRAY_KEY] = multiprocessing_manager.list()
+    shared_dict[SERVICES_KEY] = multiprocessing_manager.dict()
+    shared_dict[QUEUE_NUM_KEY] = args.queue_num
+    shared_dict[FW_RULES_LIST] = multiprocessing_manager.list()
 
     process_lock = Lock()
     processes = [
@@ -46,6 +47,8 @@ def setup_logger():
 if __name__ == '__main__':
     argparser = ArgumentParser()
     argparser.add_argument('-p', '--port', type=int, default=6969)
+    argparser.add_argument('-F', '--pcap-file', type=str, default=None, help='File to use to pre-train')
+    argparser.add_argument('-N', '--queue-num', type=int, default=DEFAULT_QUEUE_NUM)
 
     args = argparser.parse_args()
 
