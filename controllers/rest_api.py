@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, render_template
 from subprocess import run as run_cmd
 from utils.const import *
+from controllers.firewall.rule import Rule
 
 app = Flask(__name__)
 
@@ -91,7 +92,10 @@ def create_rule(rule_str):
 
 @app.route('/rule', methods=['GET'])
 def get_rules():
-    return jsonify(list(main_shared_dict[FW_RULES_LIST]))
+    responses = []
+    for rule_str in main_shared_dict[FW_RULES_LIST]:
+        responses.append({'id':Rule.compute_md5(rule_str), 'str':rule_str})
+    return jsonify(responses)
 
 @app.route('/rule/<rule_str>', methods=['DELETE'])
 def delete_rule():
