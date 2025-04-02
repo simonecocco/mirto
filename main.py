@@ -48,8 +48,11 @@ def setup_logger():
 if __name__ == '__main__':
     argparser = ArgumentParser()
     argparser.add_argument('-p', '--port', type=int, default=6969)
-    argparser.add_argument('-F', '--pcap-file', type=str, default=None, help='File to use to pre-train')
-    argparser.add_argument('-N', '--queue-num', type=int, default=DEFAULT_QUEUE_NUM)
+    argparser.add_argument('-F', '--pcap-file', type=str, default=None, help='File to use to pre-train') # TODO TBA
+    argparser.add_argument('-Qn', '--queue-num', type=int, default=DEFAULT_QUEUE_NUM)
+    argparser.add_argument('-Pn', '--packet-num') # TODO TBA
+    argparser.add_argument('-Un', '--users-num') # TODO TBA
+    argparser.add_argument('-Fc', '--fingerprinter-components') # TODO TBA
 
     args = argparser.parse_args()
 
