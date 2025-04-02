@@ -1,6 +1,7 @@
 from controllers.firewall.rule import Rule
 from utils.const import *
 from numba import njit
+from typing import Dict, List, Set
 
 '''
 PACKET
@@ -29,9 +30,9 @@ class FuocoDiMuro:
         self.main_shared_dict = shared_dict
 
         self.rules = {}
-        self.fw_str_rules_copy = {rule_str for rule_str in self.main_shared_dict[FW_RULES_LIST]}
-        for rule in self.main_shared_dict[FW_RULES_LIST]:
-            rule_obj = Rule(rule)
+        self.fw_str_rules_copy: Set[str] = {rule_str for rule_str in self.main_shared_dict[FW_RULES_HASH_SET].values()}
+        for rule in self.main_shared_dict[FW_RULES_HASH_SET].values():
+            rule_obj: Rule = Rule(rule)
             self.rules[rule_obj.get_hash()] = rule_obj
             self.main_logger.info(f'new rule {rule}')
 
@@ -62,21 +63,20 @@ class FuocoDiMuro:
         return self.add_rule(rule_str)
 
     def check_for_new_rule(self):
-        actual_rules = set(self.main_shared_dict[FW_RULES_LIST])
+        actual_rules = set(self.main_shared_dict[FW_RULES_HASH_SET].keys())
         actual_rules_len = len(actual_rules)
         rules_len = len(self.rules)
         if actual_rules_len == rules_len: # nessuna modifica
             return
         elif actual_rules_len > rules_len: # aggiunte
-            for added_rule in actual_rules-{rule.rule_str for rule in self.rules.values()}:
-                r = Rule(added_rule)
-                self.rules[r.get_hash()] = r
-                self.main_logger.info(f'new rule {added_rule}')
+            for added_rule in actual_rules-set(self.rules.keys()):
+                r = Rule(self.main_shared_dict[FW_RULES_HASH_SET][added_rule])
+                self.rules[added_rule] = r
+                self.main_logger.info(f'new rule {r.rule_str}')
         else: # actual_rules_len < rules_len: # eliminate
-            for deleted_rule in {rule.rule_str for rule in self.rules.values()}-actual_rules:
-                hash_md5 = Rule.compute_md5(deleted_rule)
-                del self.rules[hash_md5]
-                self.main_logger.info(f'deleted rule {deleted_rule}')
+            for deleted_rule in set(self.rules.keys())-actual_rules:
+                del self.rules[deleted_rule]
+                self.main_logger.info(f'deleted rule with hash {deleted_rule}')
 
     def judge(self, packet, numpy_packet, tags=None):
         self.check_for_new_rule()
