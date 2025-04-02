@@ -13,7 +13,8 @@ def main(args, logger):
     shared_dict[PACKET_ARRAY_KEY] = multiprocessing_manager.list()
     shared_dict[SERVICES_KEY] = multiprocessing_manager.dict()
     shared_dict[QUEUE_NUM_KEY] = args.queue_num
-    shared_dict[FW_RULES_LIST] = multiprocessing_manager.list()
+    shared_dict[FW_RULES_LIST] = multiprocessing_manager.list() #deprecated
+    shared_dict[FW_RULES_HASH_SET] = multiprocessing_manager.dict()
 
     process_lock = Lock()
     processes = [
