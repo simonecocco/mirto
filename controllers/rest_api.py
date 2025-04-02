@@ -15,7 +15,7 @@ def home():
 
 @app.route('/hw', methods=['GET'])
 def check_hello_world():
-    return "Hello, World!"
+    return "Hello, World!", 200
 
 @app.route('/packets', methods=['GET'])
 def get_samples():
@@ -29,7 +29,7 @@ def get_samples():
             for index, pkt_bytes in enumerate(main_shared_dict['packet_array'][start_offset:start_offset+max_len])
         ]
 
-    return jsonify({'packets': packets})
+    return jsonify({'packets': packets}), 200
 
 @app.route('/packets', methods=['DELETE'])
 def delete_pkts():
@@ -40,7 +40,7 @@ def delete_pkts():
         assert start_offset + max_len <= arr_len and start_offset >= 0
         del main_shared_dict['packet_array'][start_offset:start_offset+max_len]
 
-    return f'deleted {max_len - start_offset} packets'
+    return f'deleted {max_len - start_offset} packets', 200
 
 def iptables_rules_mng(action, port):
     for direction in ['OUTPUT', 'INPUT']:
@@ -64,12 +64,14 @@ def add_service(port):
     with main_process_lock:
         main_shared_dict[SERVICES_KEY][port] = alias
 
-    return f'services at {port} ({alias}) added correctly'
+    return f'services at {port} ({alias}) added correctly', 200
 
 @app.route('/services', methods=['GET'])
 def get_services():
+    packets_copy = None
     with main_process_lock:
-        return jsonify(dict(main_shared_dict[SERVICES_KEY]))
+        packets_copy = dict(main_shared_dict[SERVICES_KEY])
+    return jsonify(packets_copy), 200
 
 @app.route('/services/<port>', methods=['DELETE'])
 def delete_service(port):        
@@ -81,25 +83,29 @@ def delete_service(port):
         except:
             pass
 
-    return f'{port} unregistered with success'
+    return f'{port} unregistered with success', 200
 
 @app.route('/rule/<rule_str>', methods=['POST'])
 def create_rule(rule_str):
     if rule_str not in main_shared_dict[FW_RULES_LIST]:
         main_shared_dict[FW_RULES_LIST].append(rule_str)
-
-    return 'OK'
+        return 'OK', 200
+    return 'RULE ALREADY ADDED', 400
 
 @app.route('/rule', methods=['GET'])
 def get_rules():
     responses = []
     for rule_str in main_shared_dict[FW_RULES_LIST]:
         responses.append({'id':Rule.compute_md5(rule_str), 'str':rule_str})
-    return jsonify(responses)
+    return jsonify(responses), 200
 
-@app.route('/rule/<rule_str>', methods=['DELETE'])
+@app.route('/rule/<rule_hash>', methods=['DELETE'])
 def delete_rule():
-    pass
+    if rule_hash in main_shared_dict[FW_RULES_HASH_SET].keys():
+        del main_shared_dict[FW_RULES_HASH_SET][rule_hash]
+        return 'OK', 200
+    return 'HASH NOT VALID', 400
+
 
 def start_rest_api(flask_port, process_lock, logger, shared_dict):
     global main_process_lock
