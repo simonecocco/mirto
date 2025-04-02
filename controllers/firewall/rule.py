@@ -2,6 +2,7 @@ from hashlib import md5
 from dpkt.tcp import TCP
 from numba import njit
 from numpy import in1d, all as numpy_all, array as numpy_array
+from typing import List, Dict, Set
 
 # tutte le regole consentito di default
 # il pacchetto viene bloccato se una delle regole viene attivata
@@ -26,20 +27,20 @@ from numpy import in1d, all as numpy_all, array as numpy_array
 
 class Rule:
     @staticmethod
-    def compute_md5(rule_str):
+    def compute_md5(rule_str: str) -> str:
         return md5(rule_str.encode('utf-8')).hexdigest()
 
-    def __init__(self, rule_str):
-        self.rule_str = rule_str
-        self.rule_id = Rule.compute_md5(rule_str)
-        self._default_ports_behavior = True
+    def __init__(self, rule_str: str) -> None:
+        self.rule_str: str = rule_str
+        self.rule_id: str = Rule.compute_md5(rule_str)
+        self._default_ports_behavior: bool = True
         self.target_ports = {}
         self.checkers = {}
         self.parse_rule(rule_str)
 
-    def parse_rule(self, rule_str):
+    def parse_rule(self, rule_str: str):
         for line in rule_str.split('\n'):
-            index = 1 if line[0] == '!' else 0
+            index: int = 1 if line[0] == '!' else 0
             if line[index] == 'P':
                 self._default_ports_behavior = bool(index)
                 self.target_ports = {int(port):not index for port in line[index+2:].split(',')}
