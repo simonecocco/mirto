@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from subprocess import run as run_cmd
 from utils.const import *
 
@@ -7,6 +7,10 @@ app = Flask(__name__)
 main_process_lock = None
 main_logger = None
 main_shared_dict = None
+
+@app.route("/home")
+def home():
+    return render_template("index.html")
 
 @app.route('/hw', methods=['GET'])
 def check_hello_world():
