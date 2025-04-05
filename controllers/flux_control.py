@@ -13,6 +13,7 @@ def init_queue_conn(queue_num):
 
     try:
         queue_conn.bind(queue_num)
+        main_logger.info(f"Queue {queue_num} bound")
         queue_conn.queue[queue_num].set_mode(0xFFFF, fnfqueue.COPY_PACKET)
     except PermissionError:
         main_logger.error("Permission denied. Please run as root.")
@@ -20,17 +21,17 @@ def init_queue_conn(queue_num):
 
     return queue_conn
 
-def queues_handler(queue_conn, firewall):
+def queues_handler(queue_conn, firewall, fingerprinter):
     main_logger.info("Queue handler started")
-    #fingerprinter = Fingerprinter()
 
     for packet in queue_conn:
         numpy_arr_val = numpy_array([b for b in packet.payload], dtype=ubyte)
         with main_process_lock:
             main_shared_dict[PACKET_ARRAY_KEY].append(numpy_arr_val)
         
-        #cluster_id = 
+        cluster_id = fingerprinter.predict(numpy_arr_val)
         res = firewall.judge(packet, numpy_arr_val)
+        main_logger.info(f"Packet processed: {res} cluster: {cluster_id}")
 
 def start_queue(process_lock, logger, shared_dict):
     global main_process_lock
@@ -42,8 +43,9 @@ def start_queue(process_lock, logger, shared_dict):
     main_shared_dict = shared_dict
 
     firewall = FuocoDiMuro(process_lock, logger, shared_dict)
+    fingerprinter = Fingerprinter(main_logger, main_process_lock, main_shared_dict)
 
     queue_num = get_queue_num(main_shared_dict)
     queue_conn = init_queue_conn(queue_num)
 
-    queues_handler(queue_conn, firewall)
+    queues_handler(queue_conn, firewall, fingerprinter)
