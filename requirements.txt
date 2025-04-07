@@ -8,3 +8,4 @@ scikit-learn
 matplotlib
 numba
 requests
+Flask-BasicAuth
