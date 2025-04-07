@@ -3,7 +3,18 @@ import logging
 from multiprocessing import Process, Lock, Manager
 from controllers.flux_control import start_queue
 from controllers.rest_api import start_rest_api
-from utils.const import *
+from utils.const import (
+    PACKET_ARRAY_KEY,
+    SERVICES_KEY,
+    QUEUE_NUM_KEY,
+    FW_RULES_LIST,
+    FW_RULES_HASH_SET,
+    DEFAULT_QUEUE_NUM,
+    PCAP_FILE_KEY,
+    PACKET_NUMBER_REFRESH_KEY,
+    NUMBER_OF_CLUSTERS_KEY,
+    FINGERPRINTER_COMPONENTS_KEY
+)
 
 def main(args, logger):
     logger.info("Mirto started")
@@ -15,6 +26,10 @@ def main(args, logger):
     shared_dict[QUEUE_NUM_KEY] = args.queue_num
     shared_dict[FW_RULES_LIST] = multiprocessing_manager.list() #deprecated
     shared_dict[FW_RULES_HASH_SET] = multiprocessing_manager.dict()
+    shared_dict[PCAP_FILE_KEY] = args.pcap_file
+    shared_dict[PACKET_NUMBER_REFRESH_KEY] = args.packet_num
+    shared_dict[NUMBER_OF_CLUSTERS_KEY] = args.users_num
+    shared_dict[FINGERPRINTER_COMPONENTS_KEY] = args.fingerprinter_components
 
     process_lock = Lock()
     processes = [
@@ -23,11 +38,15 @@ def main(args, logger):
     ]
 
     try:
-        for process in processes: process.start()
-        for process in processes: process.join()
+        for process in processes:
+            process.start()
+        for process in processes:
+            process.join()
     except KeyboardInterrupt:
-        for process in processes: process.terminate()
-        for process in processes: process.join()
+        for process in processes:
+            process.terminate()
+        for process in processes:
+            process.join()
 
     logger.info("Mirto stopped")
 
@@ -48,11 +67,11 @@ def setup_logger():
 if __name__ == '__main__':
     argparser = ArgumentParser()
     argparser.add_argument('-p', '--port', type=int, default=6969)
-    argparser.add_argument('-F', '--pcap-file', type=str, default=None, help='File to use to pre-train') # TODO TBA
-    argparser.add_argument('-Qn', '--queue-num', type=int, default=DEFAULT_QUEUE_NUM)
-    argparser.add_argument('-Pn', '--packet-num') # TODO TBA
-    argparser.add_argument('-Un', '--users-num') # TODO TBA
-    argparser.add_argument('-Fc', '--fingerprinter-components') # TODO TBA
+    argparser.add_argument('-F', '--pcap-file', type=str, default=None, help='File to use to pre-train')
+    argparser.add_argument('-Qn', '--queue-num', type=int, default=DEFAULT_QUEUE_NUM, help='Number of queue')
+    argparser.add_argument('-Pn', '--packet-num', type=int, default=2000, help='Number of packets to refresh birch alg')
+    argparser.add_argument('-Un', '--users-num', type=int, default=21, help='Number of clusters')
+    argparser.add_argument('-Fc', '--fingerprinter-components', type=int, default=3, help='Fingerprinter components to pass on TruncateSVD')
 
     args = argparser.parse_args()
 
