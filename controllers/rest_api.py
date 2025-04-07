@@ -254,6 +254,20 @@ def delete_rule(rule_hash):
         main_logger.error(e)
         return craft_response(message=INTERNAL_ERROR, code=500)
 
+@app.route('/label/<label_num>', methods=['GET'])
+@auth.required
+def get_label(label_num):
+    pass
+
+@app.route('/labels', methods=['GET'])
+@auth.required
+def get_labels():
+    pass
+
+@app.route('/label/<label_num>/<new_label>', methods=['POST'])
+@auth.required
+def set_label(label_num, new_label):
+    pass
 
 def start_rest_api(flask_port, process_lock, logger, shared_dict):
     """Avvia l'API REST Flask.
