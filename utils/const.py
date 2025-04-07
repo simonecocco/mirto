@@ -5,3 +5,7 @@ SERVICES_KEY = 'services'
 FW_NOT_APPLICABLE_PORTS = [22]
 FW_RULES_LIST = 'firewall-rules'
 FW_RULES_HASH_SET = 'fw-rules-hashes'
+PCAP_FILE_KEY = 'pcap-file'
+PACKET_NUMBER_REFRESH_KEY = 'packet-num'
+NUMBER_OF_CLUSTERS_KEY = 'cluster-num'
+FINGERPRINTER_COMPONENTS_KEY = 'fingerprinter-comps'
