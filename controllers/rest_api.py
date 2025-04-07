@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
-from subprocess import run as run_cmd
 from utils.const import *
+from utils.generic import add_iptables_rule
 from controllers.firewall.rule import Rule
 
 app = Flask(__name__)
@@ -39,16 +39,32 @@ def delete_pkts():
     return f'deleted {max_len - start_offset} packets', 200
 
 def iptables_rules_mng(action, port):
+    """Gestisce le regole di iptables per il traffico di rete.
+
+    Questa funzione crea o elimina regole di iptables per il traffico in entrata e in uscita,
+    sia TCP che UDP, per una determinata porta e coda (queue).
+
+    Args:
+        action (str): L'azione da eseguire. Può essere '-A' per aggiungere una regola o '-D' per eliminarla.
+        port (int): La porta su cui applicare la regola.
+
+    Returns:
+        None
+
+    Raises:
+        ValueError: Se 'action' non è né '-A' né '-D'.
+        TypeError: Se 'port' non è un intero.
+
+    Note:
+        La funzione utilizza `main_shared_dict` per ottenere il numero di coda (queue number).
+        Se la chiave `QUEUE_NUM_KEY` non è presente in `main_shared_dict`, viene utilizzato il valore predefinito `DEFAULT_QUEUE_NUM`.
+        Utilizza la funzione `add_iptables_rule` per aggiungere o eliminare le regole specifiche.
+    """
+    queue_num = str(main_shared_dict.get(QUEUE_NUM_KEY, DEFAULT_QUEUE_NUM))
     for direction in ['OUTPUT', 'INPUT']:
         for comm_port in ['s', 'd']:
             for proto in ['tcp', 'udp']:
-                run_cmd([
-                    'sudo', 'iptables',
-                    action, direction,
-                    '-p', proto,
-                    f'--{comm_port}port', str(port),
-                    '-j', 'NFQUEUE', '--queue-num', str(main_shared_dict.get(QUEUE_NUM_KEY, DEFAULT_QUEUE_NUM))
-                ])
+                add_iptables_rule(action, direction, proto, comm_port, port, queue_num)
 
 @app.route('/services/<port>', methods=['POST'])
 def add_service(port):
