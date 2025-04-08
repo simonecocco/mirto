@@ -5,7 +5,8 @@ from flask_basicauth import BasicAuth
 from utils.const import (
     PACKET_ARRAY_KEY,
     SERVICES_KEY,
-    FW_RULES_HASH_SET
+    FW_RULES_HASH_SET,
+    FINGERPRINTER_LABELS_KEY
 )
 from utils.generic import add_iptables_rule
 from controllers.firewall.rule import Rule
@@ -257,17 +258,46 @@ def delete_rule(rule_hash):
 @app.route('/label/<label_num>', methods=['GET'])
 @auth.required
 def get_label(label_num):
-    pass
+    try:
+        label_num = int(label_num)
+        label = main_shared_dict[FINGERPRINTER_LABELS_KEY].get(label_num, None)
+        return craft_response(
+            message='this label doesn\'t exists' if label is None else '',
+            data=dumps({'label_num':label_num, 'label_str':label}),
+            code=200
+        )
+    except Exception as e:
+        main_logger.error(e)
+        return craft_response(message=INTERNAL_ERROR, code=500)
 
 @app.route('/labels', methods=['GET'])
 @auth.required
 def get_labels():
-    pass
+    try:
+        return craft_response(
+            data=dumps([
+                {'label_num':label_num, 'label_str':label}
+                for label_num, label in main_shared_dict[FINGERPRINTER_LABELS_KEY].items()
+            ])
+        )
+    except Exception as e:
+        main_logger.error(e)
+        return craft_response(message=INTERNAL_ERROR, code=500)
 
 @app.route('/label/<label_num>/<new_label>', methods=['POST'])
 @auth.required
 def set_label(label_num, new_label):
-    pass
+    try:
+        label_num = int(label_num)
+        if label_num in main_shared_dict[FINGERPRINTER_LABELS_KEY]:
+            prev_label = main_shared_dict[FINGERPRINTER_LABELS_KEY][label_num]
+            main_shared_dict[label_num] = new_label
+            return craft_response(message='label changed correctly', data={'from':prev_label, 'to':new_label}, code=200)
+        else:
+            return craft_response(message='invalid label', code=400)
+    except Exception as e:
+        main_logger.error(e)
+        return craft_response(message=INTERNAL_ERROR, code=500)
 
 def start_rest_api(flask_port, process_lock, logger, shared_dict):
     """Avvia l'API REST Flask.
