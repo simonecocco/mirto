@@ -45,7 +45,7 @@ def start_queue(process_lock, logger, shared_dict):
     firewall = FuocoDiMuro(process_lock, logger, shared_dict)
     fingerprinter = Fingerprinter(main_logger, main_process_lock, main_shared_dict)
 
-    queue_num = get_queue_num(main_shared_dict)
+    queue_num = main_shared_dict[QUEUE_NUM_KEY]
     queue_conn = init_queue_conn(queue_num)
 
     queues_handler(queue_conn, firewall, fingerprinter)
