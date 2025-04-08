@@ -1,93 +1,124 @@
 from hashlib import md5
 from dpkt.tcp import TCP
-from numba import njit
-from numpy import in1d, all as numpy_all, array as numpy_array
-from typing import List, Dict, Set
-
-# tutte le regole consentito di default
-# il pacchetto viene bloccato se una delle regole viene attivata
-# P <list of int> -> osserva una porta in src
-# (in caso di risposta del server o dst in caso di richiesta dal client)
-# B <bytes>,[[-]<offset>] -> controlla se son presenti dei bytes nel pacchetto
-# b <bytes> -> controlla se son presenti de bytes nel payload
-# R <regex> -> controlla se una stringa regex matcha nel payload
-# L <int>/<min int>-<max int> -> controlla la lunghezza del pacchetto in modo fisso o dinamico
-# ! -> affiancarlo alle lettere P, B, b, R, L fa il modo di negare
-# esempi
-# L 15 -> blocca i pacchetti di 15 bytes
-# L 15\nP 8080 -> blocca i pacchetti di 15 byte che arrivano sulla 8080
-# !P 9090 -> blocca tutti i pacchetti eccetto quelli sulla 9090
-# b 0x20... -> blocca tutti i pacchetti che presentano uno spazio nel payload
-# T <tag>
-
-# True -> trigger della regola
-# False -> non triggera la regola
-
-#TODO implement FW_BANNED_PORTS
+import numpy as np
+import re
+from typing import Dict, Set, Callable, List
+from functools import lru_cache
 
 class Rule:
+    _BYTES_PATTERN = re.compile(r'0x([0-9a-fA-F]+)')
+    _RANGE_PATTERN = re.compile(r'(\d+)-(\d+)')
+    
     @staticmethod
+    @lru_cache(maxsize=1024)
     def compute_md5(rule_str: str) -> str:
         return md5(rule_str.encode('utf-8')).hexdigest()
 
     def __init__(self, rule_str: str) -> None:
-        self.rule_str: str = rule_str
-        self.rule_id: str = Rule.compute_md5(rule_str)
+        self.rule_str: str = rule_str.strip()
+        self.rule_id: str = self.compute_md5(self.rule_str)
         self._default_ports_behavior: bool = True
-        self.target_ports = {}
-        self.checkers = {}
-        self.parse_rule(rule_str)
+        self.target_ports: Dict[int, bool] = {}
+        self.checkers: List[Callable[[np.ndarray], bool]] = []
+        self._compiled_bytes: Dict[str, np.ndarray] = {}
+        self._compiled_regex = None
+        self.parse_rule()
 
-    def parse_rule(self, rule_str: str):
-        for line in rule_str.split('\n'):
-            index: int = 1 if line[0] == '!' else 0
-            if line[index] == 'P':
-                self._default_ports_behavior = bool(index)
-                self.target_ports = {int(port):not index for port in line[index+2:].split(',')}
-            elif line[index] == 'B':
-                pass
-            elif line[index] == 'b':
-                self.checkers['b'] = lambda numpy_packet:self.check_for_bytes_inside_payload(numpy_packet, line[index+2:], mask=index)
-            elif line[index] == 'R':
-                pass
-            elif line[index] == 'L':
-                if '-' in line:
-                    min_int, max_int = line[index+2:].split('-')
-                    self.checkers['L'] = lambda numpy_packet:self.check_for_len(numpy_packet, int(min_int), int(max_int), mask=index)
+    def parse_rule(self):
+        for line in self.rule_str.split('\n'):
+            if not line:
+                continue
+                
+            negated = line.startswith('!')
+            content = line[1:] if negated else line
+            rule_type = content[0]
+            rule_value = content[2:].strip()
+            
+            if rule_type == 'P':
+                self._default_ports_behavior = not negated
+                self.target_ports.update(
+                    (int(port), not negated) 
+                    for port in rule_value.split(',')
+                    if port.strip()
+                )
+            elif rule_type == 'B':
+                # Bytes in packet
+                pattern = self._compile_bytes(rule_value)
+                checker = lambda p, pat=pattern, neg=negated: self._check_bytes(p, pat, neg)
+                self.checkers.append(checker)
+            elif rule_type == 'b':
+                # Bytes in payload
+                pattern = self._compile_bytes(rule_value)
+                checker = lambda p, pat=pattern, neg=negated: self._check_payload(p, pat, neg)
+                self.checkers.append(checker)
+            elif rule_type == 'R':
+                # Regex
+                self._compiled_regex = re.compile(rule_value.encode())
+                checker = lambda p, reg=self._compiled_regex, neg=negated: self._check_regex(p, reg, neg)
+                self.checkers.append(checker)
+            elif rule_type == 'L':
+                # Length check
+                if '-' in rule_value:
+                    match = self._RANGE_PATTERN.match(rule_value)
+                    if match:
+                        min_len, max_len = map(int, match.groups())
+                        checker = lambda p, mn=min_len, mx=max_len, neg=negated: self._check_length(p, mn, mx, neg)
                 else:
-                    num = int(line[index+2:].split(','))
-                    self.checkers['L'] = lambda numpy_packet:self.check_for_len(numpy_packet, num, num+1, mask=index)
+                    length = int(rule_value.split(',')[0])
+                    checker = lambda p, l=length, neg=negated: self._check_length(p, l, l+1, neg)
+                self.checkers.append(checker)
 
-    def check_for_bytes_inside_package(self, numpy_packet, _bytes, mask=0):
-        pass
+    @staticmethod
+    def _compile_bytes(byte_str: str) -> np.ndarray:
+        if byte_str.startswith('0x'):
+            hex_str = byte_str[2:]
+            return np.array(
+                [int(hex_str[i:i+2], 16) for i in range(0, len(hex_str), 2)],
+                dtype=np.uint8
+            )
+        return np.frombuffer(byte_str.encode(), dtype=np.uint8)
 
-    def check_for_bytes_inside_payload(self, numpy_packet, _bytes, mask=0):
-        if _bytes[0:2] == '0x':
-            _bytes = _bytes[2:]
-            _bytes = [int(h+l, 16) for h, l in zip(_bytes[::2], _bytes[1::2])]
-        bytes_len = len(_bytes)
-        for numpy_index in range(0, numpy_packet.shape[-1], bytes_len):
-            for byte_index in range(bytes_len):
-                if _bytes[byte_index] != numpy_packet[numpy_index+bytes_len-1]:
-                    break
-            else:
-                return True
-        return False
+    def _check_bytes(self, packet: np.ndarray, pattern: np.ndarray, negated: bool) -> bool:
+        # Usa correlazione per trovare il pattern
+        if len(pattern) > len(packet):
+            return negated
+        
+        # Operazione vettoriale ottimizzata
+        for i in range(len(packet) - len(pattern) + 1):
+            if np.array_equal(packet[i:i+len(pattern)], pattern):
+                return not negated
+        return negated
 
-    def check_for_regex(self, numpy_packet, regex, mask=0):
-        pass
+    def _check_payload(self, packet: np.ndarray, pattern: np.ndarray, negated: bool) -> bool:
+        # Simile a _check_bytes ma potrebbe saltare l'header
+        return self._check_bytes(packet[20:], pattern, negated)  # Assume header IP+TCP di 20 byte
 
-    def check_for_len(self, numpy_packet, min_len, max_len, mask=0):
-        return (max_len > numpy_packet.shape[-1] >= min_len) ^ (not mask)
+    def _check_regex(self, packet: np.ndarray, pattern: re.Pattern, negated: bool) -> bool:
+        match = pattern.search(packet.tobytes())
+        return (match is not None) ^ negated
 
-    def judge(self, packet, numpy_packet, tags=set()):
-        tcp_pkt = TCP(packet.payload)
-        return (self.target_ports.get(tcp_pkt.sport, self._default_ports_behavior)\
-            or self.target_ports.get(tcp_pkt.dport, self._default_ports_behavior))\
-            and all(check(numpy_packet) for check in self.checkers.values())
+    @staticmethod
+    def _check_length(packet: np.ndarray, min_len: int, max_len: int, negated: bool) -> bool:
+        length = len(packet)
+        return (min_len <= length < max_len) ^ negated
 
-    def get_hash(self):
+    def judge(self, packet, numpy_packet, tags=None) -> bool:
+        try:
+            tcp_pkt = TCP(packet.payload)
+            port_check = (
+                self.target_ports.get(tcp_pkt.sport, self._default_ports_behavior) or
+                self.target_ports.get(tcp_pkt.dport, self._default_ports_behavior)
+            )
+            
+            if not port_check:
+                return False
+                
+            return all(checker(numpy_packet) for checker in self.checkers)
+        except Exception:
+            return False
+
+    def get_hash(self) -> str:
         return self.rule_id
     
-    def __hash__(self):
-        return self.rule_id
+    def __hash__(self) -> int:
+        return hash(self.rule_id)
