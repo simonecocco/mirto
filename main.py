@@ -3,18 +3,7 @@ import logging
 from multiprocessing import Process, Lock, Manager
 from controllers.flux_control import start_queue
 from controllers.rest_api import start_rest_api
-from utils.const import (
-    PACKET_ARRAY_KEY,
-    SERVICES_KEY,
-    QUEUE_NUM_KEY,
-    FW_RULES_LIST,
-    FW_RULES_HASH_SET,
-    DEFAULT_QUEUE_NUM,
-    PCAP_FILE_KEY,
-    PACKET_NUMBER_REFRESH_KEY,
-    NUMBER_OF_CLUSTERS_KEY,
-    FINGERPRINTER_COMPONENTS_KEY
-)
+from utils.const import *
 
 def main(args, logger):
     logger.info("Mirto started")
@@ -30,6 +19,7 @@ def main(args, logger):
     shared_dict[PACKET_NUMBER_REFRESH_KEY] = args.packet_num
     shared_dict[NUMBER_OF_CLUSTERS_KEY] = args.users_num
     shared_dict[FINGERPRINTER_COMPONENTS_KEY] = args.fingerprinter_components
+    shared_dict[FINGERPRINTER_LABELS_KEY] = {i:f'user{i}' for i in range(args.users_num)}
 
     process_lock = Lock()
     processes = [
