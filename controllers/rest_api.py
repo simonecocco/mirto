@@ -2,12 +2,7 @@ from json import dumps
 from os import urandom
 from flask import Flask, request, Response
 from flask_basicauth import BasicAuth
-from utils.const import (
-    PACKET_ARRAY_KEY,
-    SERVICES_KEY,
-    FW_RULES_HASH_SET,
-    FINGERPRINTER_LABELS_KEY
-)
+from utils.const import *
 from utils.generic import add_iptables_rule
 from controllers.firewall.rule import Rule
 from user.config import WEBAPP_USERNAME, WEBAPP_PASSWORD
@@ -61,7 +56,7 @@ def craft_response(message:str='', data=None, code=200):
 
 
 @app.route('/hw', methods=['GET'])
-@auth.required
+#@auth.required
 def check_hello_world():
     """
     Endpoint che restituisce un messaggio "Hello World".
@@ -76,7 +71,7 @@ def check_hello_world():
     return craft_response(message='Hello World')
 
 @app.route('/packets', methods=['GET'])
-@auth.required
+#@auth.required
 def get_samples():
     """
     Restituisce un sottoinsieme dei pacchetti memorizzati in memoria condivisa.
@@ -173,7 +168,7 @@ def iptables_rules_mng(action, port):
                 add_iptables_rule(action, direction, proto, comm_port, port, queue_num)
 
 @app.route('/services/<port>', methods=['POST'])
-@auth.required
+#@auth.required
 def add_service(port):
     try:
         port = int(port)
@@ -190,7 +185,7 @@ def add_service(port):
         return craft_response(message=INTERNAL_ERROR, code=500)
 
 @app.route('/services', methods=['GET'])
-@auth.required
+#@auth.required
 def get_services():
     try:
         with main_process_lock:
@@ -201,7 +196,7 @@ def get_services():
         return craft_response(message=INTERNAL_ERROR, code=500)
 
 @app.route('/services/<port>', methods=['DELETE'])
-@auth.required
+#@auth.required
 def delete_service(port):
     try:
         iptables_rules_mng('-D', port)
@@ -218,7 +213,7 @@ def delete_service(port):
         return craft_response(message=INTERNAL_ERROR, code=500)
 
 @app.route('/rule/<rule_str>', methods=['POST'])
-@auth.required
+#@auth.required
 def create_rule(rule_str):
     try:
         rule_hash = Rule.compute_md5(rule_str)
@@ -231,7 +226,7 @@ def create_rule(rule_str):
         return craft_response(message=INTERNAL_ERROR, code=500)
 
 @app.route('/rule', methods=['GET'])
-@auth.required
+#@auth.required
 def get_rules():
     try:
         resp = [
@@ -244,7 +239,7 @@ def get_rules():
         return craft_response(message=INTERNAL_ERROR, code=500)
 
 @app.route('/rule/<rule_hash>', methods=['DELETE'])
-@auth.required
+#@auth.required
 def delete_rule(rule_hash):
     try:
         if rule_hash in main_shared_dict[FW_RULES_HASH_SET].keys():
@@ -256,7 +251,7 @@ def delete_rule(rule_hash):
         return craft_response(message=INTERNAL_ERROR, code=500)
 
 @app.route('/label/<label_num>', methods=['GET'])
-@auth.required
+#@auth.required
 def get_label(label_num):
     try:
         label_num = int(label_num)
@@ -271,7 +266,7 @@ def get_label(label_num):
         return craft_response(message=INTERNAL_ERROR, code=500)
 
 @app.route('/labels', methods=['GET'])
-@auth.required
+#@auth.required
 def get_labels():
     try:
         return craft_response(
@@ -285,7 +280,7 @@ def get_labels():
         return craft_response(message=INTERNAL_ERROR, code=500)
 
 @app.route('/label/<label_num>/<new_label>', methods=['POST'])
-@auth.required
+#@auth.required
 def set_label(label_num, new_label):
     try:
         label_num = int(label_num)
