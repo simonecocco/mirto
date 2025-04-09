@@ -1,7 +1,8 @@
-{% extends "base.html" %}
-
-{% block title %}Home{% endblock %}
-
+<!DOCTYPE html>
 {% block content %}
-    <h1 class="text-center">hello world</h1>
+    <head>
+        <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+    </head>
 {% endblock %}
+
+{% extends "base.html" %}
