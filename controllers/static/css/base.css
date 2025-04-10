@@ -1,4 +1,9 @@
-body {
+:root {
+    --bs-primary: #783e74 !important;
+    --bs-secondary: #25272e !important;
+}
+
+body {  /*PADDING TEMPORANEO*/
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
@@ -50,7 +55,7 @@ button:hover {
     background-color: #45a049;
 }
 
-input[type="port"] {
+input {
     padding: 12px;
     font-size: 16px;
     border-radius: 5px;

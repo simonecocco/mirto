@@ -6,7 +6,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <script>
-        function getSamples(){      // TO BE FIXED
+        function getSamples(){      // FIXME
             const from = document.getElementById("from").value;
             const to = document.getElementById("to").value;
 
@@ -14,17 +14,20 @@
 
             container.innerHTML = "";
 
-            fetch("/packets?'from'=" + from + "&'to'=" + to)
+            fetch(`/packets?'from'=${from}&'to'=${to}`)
                 .then(res => res.json())
-                .then(data => {
-                    let content = "";
+                .then(response => {
+                    const data = JSON.parse(response.data);
                     data.packets.forEach(pkt => {
                         const pktElem = document.createElement("p");
                         const ascii = String.fromCharCode(...pkt.bytes);
                         pktElem.textContent = `packet n° ${pkt.n}: ${ascii}`;
                         container.appendChild(pktElem);
                     });
-                });
+                })
+                .catch(err => {
+                    container.innerHTML = "ERRORE NELLA RICHIESTA --> " + err;
+            });
         }
 
         window.onload = function() {
@@ -40,12 +43,12 @@
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
                         <div class="d-flex align-items-center">
-                            <input type="number" min="0" class="form-control me-2" id="from" placeholder="from...">
+                            <input type="number" min="0" value="0" class="form-control me-2" id="from" placeholder="from...">
                         </div>
                     </li>
                     <li class="nav-item ms-3">
                         <div class="d-flex align-items-center">
-                            <input type="number" min="1" class="form-control me-2" id="to" placeholder="to...">
+                            <input type="number" min="1" value="1" class="form-control me-2" id="to" placeholder="to...">
                         </div>
                     </li>
                     <li class="nav-item ms-3">
@@ -55,6 +58,7 @@
             </div>
         </div>
     </nav>
+    <!-- END NAVBAR -->
 
     <div class="container-fluid mt-5">
         <div class="row">
@@ -79,7 +83,7 @@
             </div>
         </div>
     </div>
-    <script>
+    <script>    // CLEAN ME
         function addPort() {
             const port = document.getElementById("port").value;
 
