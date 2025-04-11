@@ -6,9 +6,41 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <script>
+        function getServices() {
+            fetch('/services')
+            .then(res => res.json())
+            .then(response => {
+                const data = JSON.parse(response.data);
+
+                if (Object.keys(data).length === 0) {
+                    const noPortsMessage = document.createElement('p');
+                    noPortsMessage.textContent = 'nessun servizio in ascolto.';
+                    document.getElementById('portsContainer').appendChild(noPortsMessage);
+                    return;
+                }
+
+                const ul = document.createElement('ul');
+                for (const port in data) {
+                    const li = document.createElement('li');
+                    li.textContent = `${port}`;
+                    ul.appendChild(li);
+                }
+
+                document.getElementById('portsContainer').appendChild(ul);
+            })
+            .catch(err => {
+                const errorMessage = document.createElement('p');
+                errorMessage.textContent = `Error: ${err.message}`;
+                document.getElementById('portsContainer').appendChild(errorMessage);
+            });
+        }
+
         function getSamples(){      // FIXME
-            const from = document.getElementById("from").value;
-            const to = document.getElementById("to").value;
+            const frominput = document.getElementById("from").value;
+            const toinput = document.getElementById("to").value;
+
+            let from = (frominput != "") ? frominput : 0;
+            let to = (toinput != "") ? toinput : 30;
 
             const container = document.getElementById("packet-data");
 
@@ -26,12 +58,15 @@
                     });
                 })
                 .catch(err => {
-                    container.innerHTML = "ERRORE NELLA RICHIESTA --> " + err;
+                    const banner = document.createElement("p");
+                    banner.textContent = `ERRORE NELLA RICHIESTA --> ${err}`;
+                    container.appendChild(banner);
             });
         }
 
         window.onload = function() {
             getSamples();
+            getServices();
         };
     </script>
 </head>
@@ -40,21 +75,23 @@
     <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top w-100">
         <div class="container-fluid">
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <div class="d-flex align-items-center">
-                            <input type="number" min="0" value="0" class="form-control me-2" id="from" placeholder="from...">
-                        </div>
+                <ul class="navbar-nav w-100 align-items-center">
+                    <li class="nav-item me-5 d-flex align-items-center" style="padding-right: 6vh;"> <!-- delete this padding -->
+                        <input type="text" class="form-control me-2" id="searchText" placeholder="filter...">
+                        <button class="btn btn-info" onclick="searchFunction()">FILTRA</button>
                     </li>
-                    <li class="nav-item ms-3">
-                        <div class="d-flex align-items-center">
-                            <input type="number" min="1" value="1" class="form-control me-2" id="to" placeholder="to...">
+                
+                    <li class="nav-item ms-auto d-flex align-items-center">
+                        <div class="d-flex align-items-center me-3">
+                            <input type="number" min="0" class="form-control me-2" id="from" placeholder="from...">
                         </div>
-                    </li>
-                    <li class="nav-item ms-3">
-                        <button class="btn btn-primary" onclick="getSamples()">Invia</button>
+                        <div class="d-flex align-items-center me-3">
+                            <input type="number" min="1" class="form-control me-2" id="to" placeholder="to...">
+                        </div>
+                        <button class="btn btn-primary" onclick="getSamples()">INVIA</button>
                     </li>
                 </ul>
+                
             </div>
         </div>
     </nav>
@@ -66,49 +103,109 @@
                 <div id="packet-data" class="border p-3 bg-light">Caricamento...</div>
             </div>
             <div class="col-md-4">
-                <div class="row">
-                    <div class="form-group">
-                        <label for="port">Aggiungi una porta:</label>
-                        <input type="number" min="0" id="port" name="port" class="form-control" />
+                <p>In ascolto:</p>
+                <div id="portsContainer" class="mt-4"></div>
+                <!-- PORTS -->
+                <div class="row mb-2">
+                    <div class="d-flex">
+                        <input type="number" min="0" id="portAdd" name="portAdd" class="form-control me-2" placeholder="aggiungi una porta..." />
+                        <button onclick="addPort()" class="btn btn-primary">AGGIUNGI</button>
                     </div>
-                    <button onclick="addPort()" class="btn btn-primary btn-block">AGGIUNGI</button>
+                </div>
+                <div class="row mb-4">
+                    <div class="d-flex">
+                        <input type="number" min="0" id="portRemove" name="portRemove" class="form-control me-2" placeholder="rimuovi una porta..." />
+                        <button onclick="removePort()" class="btn btn-danger">RIMUOVI</button>
+                    </div>
+                </div>
+
+                <!-- RULES -->
+                <div class="row mb-2 mt-3">
+                    <div class="d-flex">
+                        <input type="text" id="rule" name="rule" class="form-control me-2" placeholder="crea una regola..." />
+                        <button onclick="createRule()" class="btn btn-primary">CREA</button>
+                    </div>
                 </div>
                 <div class="row">
-                    <div class="form-group">
-                        <label for="port">Rimuovi una porta:</label>
-                        <input type="number" min="0" id="port" name="port" class="form-control" />
+                    <div class="d-flex">
+                        <input type="text" id="rulehash" name="rulehash" class="form-control me-2" placeholder="elimina una regola..." />
+                        <button onclick="deleteRule()" class="btn btn-danger">ELIMINA</button>
                     </div>
-                    <button onclick="removePort()" class="btn btn-danger btn-block">RIMUOVI</button>
                 </div>
+
             </div>
         </div>
     </div>
     <script>    // CLEAN ME
         function addPort() {
-            const port = document.getElementById("port").value;
+            const port = document.getElementById("portAdd").value;
 
             fetch(`/services/${port}`, {
                 method: "POST"
             })
             .then(response => response.text())
-            .then(data => {
-                console.log(data);
-                alert(JSON.stringify(data));
+            .then(message => {
+                console.log(message);
+                alert(JSON.stringify(message));
                 location.reload();
             })
             .catch(err => console.error("Errore nella richiesta:", err));
         }
 
         function removePort() {
-            const port = document.getElementById("port").value;
+            const port = document.getElementById("portRemove").value;
 
             fetch(`/services/${port}`, {
                 method: "DELETE"
             })
             .then(response => response.text())
-            .then(data => {
-                console.log(data);
-                alert(JSON.stringify(data));
+            .then(message => {
+                console.log(message);
+                alert(JSON.stringify(message));
+                location.reload();
+            })
+            .catch(err => console.error("Errore nella richiesta:", err));
+        }
+
+        function createRule() {
+            const rulestr = document.getElementById("rule").value;
+
+            fetch(`/rule/${rulestr}`, {
+                method: "POST"
+            })
+            .then(response => response.text())
+            .then(message => {
+                console.log(message);
+                alert(JSON.stringify(message));
+                location.reload();
+            })
+            .catch(err => console.error("Errore nella richiesta:", err));
+        }
+
+        function getRules() {       //TODO
+            fetch('/rule')
+            .then(res => res.json())
+            .then(response => {
+                const data = JSON.parse(response.data);
+
+                for (const rule in data) {
+                    //rule.id (hash)
+                    //rule.str (rule str)
+                    //TODO OUT
+                }
+            });
+        }
+
+        function deleteRule() {
+            const rulehash = document.getElementById("rulehash").value;
+
+            fetch(`/rule/${rulehash}`, {
+                method: "DELETE"
+            })
+            .then(response => response.text())
+            .then(message => {
+                console.log(message);
+                alert(JSON.stringify(message));
                 location.reload();
             })
             .catch(err => console.error("Errore nella richiesta:", err));
