@@ -1,5 +1,5 @@
 import json
-from utils.const import get_preferences_json_path
+from mirto.utils.const import get_preferences_json_path
 from os.path import exists
 
 DEFAULT_MIRTO_CATEGORY_KEY = 'mirto'
@@ -40,3 +40,7 @@ class UserPreferences:
     def update_preferences(self):
         with open(get_preferences_json_path(), 'w') as file_instance:
             file_instance.write(json.dumps(self._preferences_dict))
+
+    @property
+    def preferences(self) -> dict:
+        return self._preferences_dict
