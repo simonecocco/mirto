@@ -1,7 +1,6 @@
 import json
 from unittest.mock import mock_open, patch
 from mirto.user.user_preferences import UserPreferences
-from mirto.utils.const import get_preferences_json_path
 
 
 @patch('mirto.user.user_preferences.exists')
