@@ -1,13 +1,18 @@
 from json import dumps
 from os import urandom
-from flask import Flask, request, Response
+from flask import Flask, request, Response, Blueprint
 from flask_basicauth import BasicAuth
 from utils.const import *
 from utils.generic import add_iptables_rule
 from controllers.firewall.rule import Rule
-from user.config import WEBAPP_USERNAME, WEBAPP_PASSWORD
+from mirto.user.user_preferences import (
+    DEFAULT_MIRTO_PORT_KEY,
+    DEFAULT_MIRTO_HOST_KEY,
+    DEFAULT_MIRTO_PASSWORD_KEY,
+    DEFAULT_MIRTO_USERNAME_KEY,
+)
 
-app = Flask(__name__)
+
 
 def check_cred_completeness(prefix, cred):
     if cred is not None:
@@ -19,10 +24,7 @@ def check_cred_completeness(prefix, cred):
     ])
     print(f'used generated credential {new_cred}')
 
-app.config['BASIC_AUTH_USERNAME'] = check_cred_completeness('username_', WEBAPP_USERNAME)
-app.config['BASIC_AUTH_PASSWORD'] = check_cred_completeness('psw_', WEBAPP_PASSWORD)
 
-auth = BasicAuth(app)
 
 main_process_lock = None
 main_logger = None
@@ -54,55 +56,9 @@ def craft_response(message:str='', data=None, code=200):
         'data': data,
     }), status=code, mimetype='application/json')
 
-
-@app.route('/hw', methods=['GET'])
-#@auth.required
-def check_hello_world():
-    """
-    Endpoint che restituisce un messaggio "Hello World".
-
-    Questo endpoint risponde a richieste GET all'URL '/hw'.
-    Restituisce un oggetto response creato dalla funzione `craft_response`
-    con il messaggio impostato a "Hello World".
-
-    Returns:
-        A Flask response object containing the message "Hello World".
-    """
-    return craft_response(message='Hello World')
-
 @app.route('/packets', methods=['GET'])
 #@auth.required
 def get_samples():
-    """
-    Restituisce un sottoinsieme dei pacchetti memorizzati in memoria condivisa.
-
-    Questo endpoint consente di recuperare una porzione di pacchetti memorizzati
-    in `main_shared_dict['packet_array']`, specificando un intervallo tramite
-    i parametri 'from' e 'to'.
-
-    Args:
-        None
-
-    Returns:
-        flask.Response: Una risposta JSON contenente i pacchetti richiesti.
-                        La risposta include:
-                            - 'message': Un messaggio di stato.
-                            - 'data': Una stringa JSON contenente una lista di pacchetti
-                                       nel formato `{'packets': [...]}`.  Ogni pacchetto
-                                       è rappresentato come `{'n': index, 'bytes': [bytes]}`.
-                            - 'code': Il codice di stato HTTP (200, 400 o 500).
-
-    Raises:
-        LookupError: Se gli indici 'from' e 'to' specificati sono fuori dall'intervallo valido.
-        BufferError: Se l'array di pacchetti in memoria condivisa è vuoto.
-        Exception: In caso di altri errori imprevisti, viene registrato un errore nel logger
-                   e viene restituito un codice di stato 500.
-
-    Query Parameters:
-        from (int, optional): L'indice di inizio dell'intervallo da recuperare. Default: 0.
-        to (int, optional): L'indice di fine dell'intervallo da recuperare (escluso).
-                           Se non specificato, viene utilizzato l'indice di fine dell'array.
-    """
     try:
         start_offset = request.args.get('from', 0)
         with main_process_lock:
@@ -139,28 +95,6 @@ def get_samples():
 #    return f'deleted {max_len - start_offset} packets', 200
 
 def iptables_rules_mng(action, port):
-    """Gestisce le regole di iptables per il traffico di rete.
-
-    Questa funzione crea o elimina regole di iptables per il traffico in entrata e in uscita,
-    sia TCP che UDP, per una determinata porta e coda (queue).
-
-    Args:
-        action (str): L'azione da eseguire. '-A' per aggiungere una regola, '-D' per eliminarla.
-        port (int): La porta su cui applicare la regola.
-
-    Returns:
-        None
-
-    Raises:
-        ValueError: Se 'action' non è né '-A' né '-D'.
-        TypeError: Se 'port' non è un intero.
-
-    Note:
-        La funzione utilizza `main_shared_dict` per ottenere il numero di coda (queue number).
-        Se la chiave `QUEUE_NUM_KEY` non è presente in `main_shared_dict`, viene utilizzato il
-        valore predefinito `DEFAULT_QUEUE_NUM`.
-        Utilizza la funzione `add_iptables_rule` per aggiungere o eliminare le regole specifiche.
-    """
     queue_num = str(main_shared_dict.get(QUEUE_NUM_KEY, DEFAULT_QUEUE_NUM))
     for direction in ['OUTPUT', 'INPUT']:
         for comm_port in ['s', 'd']:
@@ -250,67 +184,45 @@ def delete_rule(rule_hash):
         main_logger.error(e)
         return craft_response(message=INTERNAL_ERROR, code=500)
 
-@app.route('/label/<label_num>', methods=['GET'])
-#@auth.required
-def get_label(label_num):
-    try:
-        label_num = int(label_num)
-        label = main_shared_dict[FINGERPRINTER_LABELS_KEY].get(label_num, None)
-        return craft_response(
-            message='this label doesn\'t exists' if label is None else '',
-            data=dumps({'label_num':label_num, 'label_str':label}),
-            code=200
-        )
-    except Exception as e:
-        main_logger.error(e)
-        return craft_response(message=INTERNAL_ERROR, code=500)
 
-@app.route('/labels', methods=['GET'])
-#@auth.required
-def get_labels():
-    try:
-        return craft_response(
-            data=dumps([
-                {'label_num':label_num, 'label_str':label}
-                for label_num, label in main_shared_dict[FINGERPRINTER_LABELS_KEY].items()
-            ])
-        )
-    except Exception as e:
-        main_logger.error(e)
-        return craft_response(message=INTERNAL_ERROR, code=500)
+class MirtoAPI:
+    APP_USERNAME_KEY = 'BASIC_AUTH_USERNAME'
+    APP_PASSWORD_KEY = 'BASIC_AUTH_PASSWORD'
 
-@app.route('/label/<label_num>/<new_label>', methods=['POST'])
-#@auth.required
-def set_label(label_num, new_label):
-    try:
-        label_num = int(label_num)
-        if label_num in main_shared_dict[FINGERPRINTER_LABELS_KEY]:
-            prev_label = main_shared_dict[FINGERPRINTER_LABELS_KEY][label_num]
-            main_shared_dict[label_num] = new_label
-            return craft_response(message='label changed correctly', data={'from':prev_label, 'to':new_label}, code=200)
-        else:
-            return craft_response(message='invalid label', code=400)
-    except Exception as e:
-        main_logger.error(e)
-        return craft_response(message=INTERNAL_ERROR, code=500)
+    def __init__(self, process_orchestrator):
+        self._process_orchestrator = process_orchestrator
+        self._app = self._configure_app()
+        self._auth = BasicAuth(self._app)
+        self._register_blueprints()
 
-def start_rest_api(flask_port, process_lock, logger, shared_dict):
-    """Avvia l'API REST Flask.
+    def _configure_app(self):
+        app = Flask(__name__)
+        app.logger = self._process_orchestrator.get_logger()
 
-    Questa funzione configura le variabili globali per il lock del processo,
-    il logger e il dizionario condiviso, e quindi avvia l'applicazione Flask.
+        user_pref = self._process_orchestrator.get_user_prefs()
+        mirto_username = user_pref.mirto_config.get(DEFAULT_MIRTO_USERNAME_KEY)
+        mirto_password = user_pref.mirto_config.get(DEFAULT_MIRTO_PASSWORD_KEY)
 
-    Args:
-        flask_port (int): La porta su cui ascoltare per le richieste API.
-        process_lock (threading.Lock): Un lock per la sincronizzazione tra processi.
-        logger (logging.Logger): L'oggetto logger per il logging di eventi.
-        shared_dict (dict): Un dizionario condiviso tra i processi.
-    """
-    global main_process_lock
-    global main_logger
-    global main_shared_dict
+        self._app.config[MirtoAPI.APP_USERNAME_KEY] = mirto_username
+        self._app.config[MirtoAPI.APP_PASSWORD_KEY] = mirto_password
 
-    main_process_lock = process_lock
-    main_logger = logger
-    main_shared_dict = shared_dict
-    app.run(host='0.0.0.0', port=flask_port)
+        return app
+
+    def _register_blueprints(self):
+        self._app._register_blueprints #TODO
+
+    def run(self):
+        user_pref = self._process_orchestrator.get_user_prefs()
+
+        api_host = user_pref.mirto_config[DEFAULT_MIRTO_HOST_KEY]
+        api_port = user_pref.mirto_config[DEFAULT_MIRTO_PORT_KEY]
+
+        self._app.run(host=api_host, port=api_port)
+
+    @self._app.route('/status')
+    def get_status(self):
+        return Response('OK', status=200)
+    
+
+def start_rest_api(process_orchestrator):
+    api_interface = MirtoAPI(process_orchestrator)
