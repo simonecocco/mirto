@@ -10,3 +10,9 @@ PACKET_NUMBER_REFRESH_KEY = 'packet-num'
 NUMBER_OF_CLUSTERS_KEY = 'cluster-num'
 FINGERPRINTER_COMPONENTS_KEY = 'fingerprinter-comps'
 FINGERPRINTER_LABELS_KEY = 'fingerprint-label-dict'
+
+APP_NAME = 'Mirto'
+
+
+def get_preferences_json_path():
+    return './config.json'
