@@ -1,70 +1,31 @@
-from argparse import ArgumentParser
-import logging
-from multiprocessing import Process, Lock, Manager
 from controllers.flux_control import start_queue
 from controllers.rest_api import start_rest_api
-from utils.const import *
+from utils.logger_utils import setup_logger
+from user.user_preferences import UserPreferences
+from mirto.utils.process_orchestrator import ProcessOrchestrator
+from mirto.utils.process_synchronizer import ProcessSynchronizer
 
-def main(args, logger):
-    logger.info("Mirto started")
 
-    multiprocessing_manager = Manager()
-    shared_dict = multiprocessing_manager.dict()
-    shared_dict[PACKET_ARRAY_KEY] = multiprocessing_manager.list()
-    shared_dict[SERVICES_KEY] = multiprocessing_manager.dict()
-    shared_dict[QUEUE_NUM_KEY] = args.queue_num
-    shared_dict[FW_RULES_LIST] = multiprocessing_manager.list() #deprecated
-    shared_dict[FW_RULES_HASH_SET] = multiprocessing_manager.dict()
-    shared_dict[PCAP_FILE_KEY] = args.pcap_file
-    shared_dict[PACKET_NUMBER_REFRESH_KEY] = args.packet_num
-    shared_dict[NUMBER_OF_CLUSTERS_KEY] = args.users_num
-    shared_dict[FINGERPRINTER_COMPONENTS_KEY] = args.fingerprinter_components
-    shared_dict[FINGERPRINTER_LABELS_KEY] = {i:f'user{i}' for i in range(args.users_num)}
+def main(user_preferences, logger):
+    logger = setup_logger()
 
-    process_lock = Lock()
-    processes = [
-        Process(target=start_queue, args=(process_lock, logger, shared_dict)),
-        Process(target=start_rest_api, args=(args.port, process_lock, logger, shared_dict))
-    ]
+    user_preferences = UserPreferences()
+
+    process_synchronizer = ProcessSynchronizer()
+    process_orchestrator = ProcessOrchestrator(
+        process_synchronizer,
+        user_preferences,
+        logger,
+    )
 
     try:
-        for process in processes:
-            process.start()
-        for process in processes:
-            process.join()
+        process_orchestrator.new_process('API', start_rest_api)
+        process_orchestrator.new_process('Queue', start_queue)
     except KeyboardInterrupt:
-        for process in processes:
-            process.terminate()
-        for process in processes:
-            process.join()
+        del process_orchestrator
 
     logger.info("Mirto stopped")
 
-def setup_logger():
-    logger = logging.getLogger("Mirto")
-    logger.setLevel(logging.DEBUG)
-
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.DEBUG)
-
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    console_handler.setFormatter(formatter)
-
-    logger.addHandler(console_handler)
-
-    return logger
 
 if __name__ == '__main__':
-    argparser = ArgumentParser()
-    argparser.add_argument('-p', '--port', type=int, default=6969)
-    argparser.add_argument('-F', '--pcap-file', type=str, default=None, help='File to use to pre-train')
-    argparser.add_argument('-Qn', '--queue-num', type=int, default=DEFAULT_QUEUE_NUM, help='Number of queue')
-    argparser.add_argument('-Pn', '--packet-num', type=int, default=2000, help='Number of packets to refresh birch alg')
-    argparser.add_argument('-Un', '--users-num', type=int, default=21, help='Number of clusters')
-    argparser.add_argument('-Fc', '--fingerprinter-components', type=int, default=3, help='Fingerprinter components to pass on TruncateSVD')
-
-    args = argparser.parse_args()
-
-    logger = setup_logger()
-
-    main(args, logger)
+    main()
