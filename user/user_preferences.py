@@ -41,6 +41,25 @@ class UserPreferences:
         with open(get_preferences_json_path(), 'w') as file_instance:
             file_instance.write(json.dumps(self._preferences_dict))
 
+    def __len__(self):
+        return len(self._preferences_dict)
+
+    def __setitem__(self, key, value):
+        self._preferences_dict[DEFAULT_MIRTO_CATEGORY_KEY][key] = value
+
+    def __getitem__(self, key):
+        if key not in self._preferences_dict:
+            raise ValueError(f'No {key} in preferences')
+        return self._preferences_dict[DEFAULT_MIRTO_CATEGORY_KEY][key]
+
     @property
     def preferences(self) -> dict:
         return self._preferences_dict
+
+    @property
+    def mirto_config(self) -> dict:
+        return self.preferences()[DEFAULT_MIRTO_CATEGORY_KEY]
+
+    @property
+    def services_config(self) -> dict:
+        return self.preferences()[DEFAULT_SERVICES_CATEGORY_KEY]
