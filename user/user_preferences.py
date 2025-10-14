@@ -8,9 +8,9 @@ DEFAULT_MIRTO_HOST_VALUE = '127.0.0.1'
 DEFAULT_MIRTO_PORT_KEY = 'port'
 DEFAULT_MIRTO_PORT_VALUE = 6969
 DEFAULT_MIRTO_USERNAME_KEY = 'username'
-DEFAULT_MIRTO_USERNAME_VALUE = None
+DEFAULT_MIRTO_USERNAME_VALUE = 'mirto'
 DEFAULT_MIRTO_PASSWORD_KEY = 'password'
-DEFAULT_MIRTO_PASSWORD_VALUE = None
+DEFAULT_MIRTO_PASSWORD_VALUE = 'mirto'
 DEFAULT_SERVICES_CATEGORY_KEY = 'services'
 
 
@@ -58,8 +58,8 @@ class UserPreferences:
 
     @property
     def mirto_config(self) -> dict:
-        return self.preferences()[DEFAULT_MIRTO_CATEGORY_KEY]
+        return self.preferences[DEFAULT_MIRTO_CATEGORY_KEY]
 
     @property
     def services_config(self) -> dict:
-        return self.preferences()[DEFAULT_SERVICES_CATEGORY_KEY]
+        return self.preferences[DEFAULT_SERVICES_CATEGORY_KEY]

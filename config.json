@@ -1,1 +1,1 @@
-{"mirto": {"host": "127.0.0.1", "port": 9999, "username": null, "password": null}, "services": []}
+{"mirto": {"host": "127.0.0.1", "port": 6969, "username": "mirto", "password": "mirto"}, "services": []}
