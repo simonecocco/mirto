@@ -2,12 +2,12 @@ from controllers.flux_control import start_queue
 from controllers.rest_api import start_rest_api
 from utils.logger_utils import setup_logger
 from user.user_preferences import UserPreferences
-from mirto.utils.process_orchestrator import ProcessOrchestrator
-from mirto.utils.process_synchronizer import ProcessSynchronizer
+from utils.process_orchestrator import ProcessOrchestrator
+from utils.process_synchronizer import ProcessSynchronizer
 
 
-def main(user_preferences, logger):
-    logger = setup_logger()
+def main():
+    logger = setup_logger('Mirto')
 
     user_preferences = UserPreferences()
 
