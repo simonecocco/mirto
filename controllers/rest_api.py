@@ -26,6 +26,21 @@ def check_cred_completeness(prefix, cred):
 
 
 
+def check_cred_completeness(prefix, cred):
+    if cred is not None:
+        return cred
+
+    new_cred = prefix+''.join([
+        hex(b)[2:]
+        for b in urandom(12)
+    ])
+    print(f'used generated credential {new_cred}')
+
+app.config['BASIC_AUTH_USERNAME'] = check_cred_completeness('username_', WEBAPP_USERNAME)
+app.config['BASIC_AUTH_PASSWORD'] = check_cred_completeness('psw_', WEBAPP_PASSWORD)
+
+auth = BasicAuth(app)
+
 main_process_lock = None
 main_logger = None
 main_shared_dict = None
@@ -56,9 +71,58 @@ def craft_response(message:str='', data=None, code=200):
         'data': data,
     }), status=code, mimetype='application/json')
 
+@app.route("/home")
+def home():
+    return render_template("index.html")
+
+@app.route('/hw', methods=['GET'])
+#@auth.required
+def check_hello_world():
+    """
+    Endpoint che restituisce un messaggio "Hello World".
+
+    Questo endpoint risponde a richieste GET all'URL '/hw'.
+    Restituisce un oggetto response creato dalla funzione `craft_response`
+    con il messaggio impostato a "Hello World".
+
+    Returns:
+        A Flask response object containing the message "Hello World".
+    """
+    return craft_response(message='Hello World')
+
 @app.route('/packets', methods=['GET'])
 #@auth.required
 def get_samples():
+    """
+    Restituisce un sottoinsieme dei pacchetti memorizzati in memoria condivisa.
+
+    Questo endpoint consente di recuperare una porzione di pacchetti memorizzati
+    in `main_shared_dict['packet_array']`, specificando un intervallo tramite
+    i parametri 'from' e 'to'.
+
+    Args:
+        None
+
+    Returns:
+        flask.Response: Una risposta JSON contenente i pacchetti richiesti.
+                        La risposta include:
+                            - 'message': Un messaggio di stato.
+                            - 'data': Una stringa JSON contenente una lista di pacchetti
+                                       nel formato `{'packets': [...]}`.  Ogni pacchetto
+                                       è rappresentato come `{'n': index, 'bytes': [bytes]}`.
+                            - 'code': Il codice di stato HTTP (200, 400 o 500).
+
+    Raises:
+        LookupError: Se gli indici 'from' e 'to' specificati sono fuori dall'intervallo valido.
+        BufferError: Se l'array di pacchetti in memoria condivisa è vuoto.
+        Exception: In caso di altri errori imprevisti, viene registrato un errore nel logger
+                   e viene restituito un codice di stato 500.
+
+    Query Parameters:
+        from (int, optional): L'indice di inizio dell'intervallo da recuperare. Default: 0.
+        to (int, optional): L'indice di fine dell'intervallo da recuperare (escluso).
+                           Se non specificato, viene utilizzato l'indice di fine dell'array.
+    """
     try:
         start_offset = request.args.get('from', 0)
         with main_process_lock:
