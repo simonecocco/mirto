@@ -20,7 +20,9 @@ def main():
 
     try:
         process_orchestrator.new_process('API', start_rest_api)
-        process_orchestrator.new_process('Queue', start_queue)
+        #process_orchestrator.new_process('Queue', start_queue)
+
+        while True: continue
     except KeyboardInterrupt:
         del process_orchestrator
 
