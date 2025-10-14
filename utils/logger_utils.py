@@ -13,7 +13,7 @@ def get_logs_dir():
 
 
 def get_log_filename():
-    return f'log-{randint()}-{time()}.log'
+    return f'log-{randint(0, 69104):0>5}-{time()}.log'
 
 
 def get_log_path():
