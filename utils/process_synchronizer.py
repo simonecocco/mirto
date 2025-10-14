@@ -1,5 +1,5 @@
 from multiprocessing import Lock
-from mirto.exceptions.lock_not_initialized import LockNotInitialized
+from exceptions.lock_not_initialized import LockNotInitialized
 
 
 class ProcessSynchronizer:

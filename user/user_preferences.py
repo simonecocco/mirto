@@ -1,5 +1,5 @@
 import json
-from mirto.utils.const import get_preferences_json_path
+from utils.const import get_preferences_json_path
 from os.path import exists
 
 DEFAULT_MIRTO_CATEGORY_KEY = 'mirto'

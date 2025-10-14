@@ -1,5 +1,5 @@
 from multiprocessing import Process, Manager
-from mirto.exceptions.process_not_exists import ProcessNotExists
+from exceptions.process_not_exists import ProcessNotExists
 
 
 class ProcessOrchestrator:
