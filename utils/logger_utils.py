@@ -24,11 +24,12 @@ def get_log_path():
 
 
 def get_logging_formatter():
-    logging.Formatter(
+    formatter = logging.Formatter(
         '(Mirto)[{asctime}][{levelname}] -> {message}',
         style="{",
         datefmt="%Y-%m-%d %H:%M",
     )
+    return formatter
 
 
 def get_logging_streamhandler():
