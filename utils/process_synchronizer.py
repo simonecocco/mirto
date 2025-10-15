@@ -7,7 +7,6 @@ class ProcessSynchronizer:
 
     def __init__(self):
         self._locks_dict = {}
-        self._processes = {}
         self.create_lock(ProcessSynchronizer.MAIN_LOCK)
 
     def create_lock(self, name):
@@ -20,3 +19,5 @@ class ProcessSynchronizer:
     def get_lock(self, name):
         if name not in self._locks_dict:
             raise LockNotInitialized(name)
+        
+        return self._locks_dict[name]
