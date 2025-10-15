@@ -1,5 +1,6 @@
 from multiprocessing import Process, Manager
 from exceptions.process_not_exists import ProcessNotExists
+from user.user_preferences import UserPreferences
 
 
 class ProcessOrchestrator:
@@ -11,7 +12,7 @@ class ProcessOrchestrator:
         self._logger = logger
         self._user_prefs = user_prefs
 
-    def get_user_prefs(self):
+    def get_user_prefs(self) -> UserPreferences:
         return self._user_prefs
 
     def get_logger(self):
