@@ -1,6 +1,7 @@
 import json
 from utils.const import get_preferences_json_path
 from os.path import exists
+from objects.service import Service
 
 DEFAULT_MIRTO_CATEGORY_KEY = 'mirto'
 DEFAULT_MIRTO_HOST_KEY = 'host'
@@ -21,6 +22,15 @@ class UserPreferences:
         else:
             self._preferences_dict = self.create_default()
 
+        self._services = list(self.create_services())
+
+    def create_services(self):
+        services_list = self._preferences_dict[DEFAULT_SERVICES_CATEGORY_KEY]
+        if services_list == []:
+            return []
+
+        return map(Service.from_dict, services_list)
+
     def create_default(self):
         return {
             DEFAULT_MIRTO_CATEGORY_KEY: {
@@ -39,7 +49,10 @@ class UserPreferences:
 
     def update_preferences(self):
         with open(get_preferences_json_path(), 'w') as file_instance:
-            file_instance.write(json.dumps(self._preferences_dict))
+            self._preferences_dict[DEFAULT_SERVICES_CATEGORY_KEY] = [
+                service.to_dict() for service in self._services
+            ]
+            file_instance.write(json.dumps(self._preferences_dict, indent=4))
 
     def __len__(self):
         return len(self._preferences_dict)
@@ -61,5 +74,5 @@ class UserPreferences:
         return self.preferences[DEFAULT_MIRTO_CATEGORY_KEY]
 
     @property
-    def services_config(self) -> dict:
-        return self.preferences[DEFAULT_SERVICES_CATEGORY_KEY]
+    def services(self) -> dict:
+        return self._services
