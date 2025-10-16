@@ -15,7 +15,7 @@ class ServiceAPI(MethodView, RouterBase):
         super().__init__(ServiceAPI.API_NAME, process_orchestrator)
         self._auth = auth
         self._configure_auth()
-    
+
     def _configure_auth(self):
         self.get = self._auth.required(self.get)
         self.put = self._auth.required(self.put)
@@ -41,4 +41,12 @@ class ServiceAPI(MethodView, RouterBase):
         pass
 
     def delete(self, service_port):
-        pass
+        try:
+            user_prefs: UserPreferences = self._process_orchestrator.get_user_prefs()
+            if port not in user_prefs.services:
+                raise ServiceNotExists(service_port)
+            
+            del user_prefs.services[port]
+            return self.OK
+        except Exception as e:
+            return self.client_fail(e)
