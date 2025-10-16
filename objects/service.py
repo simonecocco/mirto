@@ -1,11 +1,10 @@
 from exceptions.broken_serialized_object import BrokenSerializedObject
 from objects.serializable import Serializable
-from user.user_preferences import (
-    DEFAULT_SERVICE_NAME_KEY,
-    DEFAULT_SERVICE_PORT_KEY,
-    DEFAULT_SERVICE_DESCRIPTION_KEY,
-    DEFAULT_SERVICE_TAGS_KEY,
-)
+
+DEFAULT_SERVICE_NAME_KEY = 'name'
+DEFAULT_SERVICE_PORT_KEY = 'port'
+DEFAULT_SERVICE_DESCRIPTION_KEY = 'description'
+DEFAULT_SERVICE_TAGS_KEY = 'tags'
 
 
 class Service(Serializable):
@@ -16,7 +15,7 @@ class Service(Serializable):
         self.name = name
         self.description = description
         self.tags = tags
-    
+
     @property
     def port(self):
         return self._service_port

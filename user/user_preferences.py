@@ -1,7 +1,7 @@
 import json
 from utils.const import get_preferences_json_path
 from os.path import exists
-from objects.service import Service
+from objects.service import Service, DEFAULT_SERVICE_PORT_KEY
 from multiprocessing import Manager
 
 DEFAULT_MIRTO_CATEGORY_KEY = 'mirto'
@@ -14,10 +14,6 @@ DEFAULT_MIRTO_USERNAME_VALUE = 'mirto'
 DEFAULT_MIRTO_PASSWORD_KEY = 'password'
 DEFAULT_MIRTO_PASSWORD_VALUE = 'mirto'
 DEFAULT_SERVICES_CATEGORY_KEY = 'services'
-DEFAULT_SERVICE_NAME_KEY = 'name'
-DEFAULT_SERVICE_PORT_KEY = 'port'
-DEFAULT_SERVICE_DESCRIPTION_KEY = 'description'
-DEFAULT_SERVICE_TAGS_KEY ='tags'
 
 
 class UserPreferences:
