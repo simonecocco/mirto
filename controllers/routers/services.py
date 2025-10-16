@@ -2,7 +2,7 @@ from flask import Response
 from flask.views import MethodView
 from controllers.routers.router_base import RouterBase
 from json import dumps
-from typing import List
+from typing import Dict
 from objects.service import Service
 from user.user_preferences import UserPreferences
 
@@ -22,9 +22,9 @@ class ServicesAPI(MethodView, RouterBase):
 
     def get(self):
         user_prefs: UserPreferences = self._process_orchestrator.get_user_prefs()
-        services: List[Service] = user_prefs.services
+        services: Dict[int, Service] = dict(user_prefs.services)
         return Response(
-            dumps([service.to_dict() for service in services]),
+            dumps([service.to_dict() for service in services.values()]),
             status=200,
             mimetype='application/json'
         )

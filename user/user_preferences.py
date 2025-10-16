@@ -2,6 +2,7 @@ import json
 from utils.const import get_preferences_json_path
 from os.path import exists
 from objects.service import Service
+from multiprocessing import Manager
 
 DEFAULT_MIRTO_CATEGORY_KEY = 'mirto'
 DEFAULT_MIRTO_HOST_KEY = 'host'
@@ -13,6 +14,10 @@ DEFAULT_MIRTO_USERNAME_VALUE = 'mirto'
 DEFAULT_MIRTO_PASSWORD_KEY = 'password'
 DEFAULT_MIRTO_PASSWORD_VALUE = 'mirto'
 DEFAULT_SERVICES_CATEGORY_KEY = 'services'
+DEFAULT_SERVICE_NAME_KEY = 'name'
+DEFAULT_SERVICE_PORT_KEY = 'port'
+DEFAULT_SERVICE_DESCRIPTION_KEY = 'description'
+DEFAULT_SERVICE_TAGS_KEY ='tags'
 
 
 class UserPreferences:
@@ -22,14 +27,17 @@ class UserPreferences:
         else:
             self._preferences_dict = self.create_default()
 
-        self._services = list(self.create_services())
+        self._services = Manager().dict(self.create_services())
 
     def create_services(self):
         services_list = self._preferences_dict[DEFAULT_SERVICES_CATEGORY_KEY]
         if services_list == []:
             return []
 
-        return map(Service.from_dict, services_list)
+        return {
+            service[DEFAULT_SERVICE_PORT_KEY]: Service.from_dict(service)
+            for service in services_list
+        }
 
     def create_default(self):
         return {

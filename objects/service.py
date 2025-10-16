@@ -1,5 +1,11 @@
 from exceptions.broken_serialized_object import BrokenSerializedObject
 from objects.serializable import Serializable
+from user.user_preferences import (
+    DEFAULT_SERVICE_NAME_KEY,
+    DEFAULT_SERVICE_PORT_KEY,
+    DEFAULT_SERVICE_DESCRIPTION_KEY,
+    DEFAULT_SERVICE_TAGS_KEY,
+)
 
 
 class Service(Serializable):
@@ -17,20 +23,20 @@ class Service(Serializable):
 
     def to_dict(self):
         return {
-            'port': self._service_port,
-            'name': self.name,
-            'description': self.description,
-            'tags': self.tags,
+            DEFAULT_SERVICE_PORT_KEY: self._service_port,
+            DEFAULT_SERVICE_NAME_KEY: self.name,
+            DEFAULT_SERVICE_DESCRIPTION_KEY: self.description,
+            DEFAULT_SERVICE_TAGS_KEY: self.tags,
         }
 
     @staticmethod
     def from_dict(serialized_service):
         try:
             return Service(
-                serialized_service['name'],
-                serialized_service['port'],
-                serialized_service['description'],
-                tags=serialized_service.get('tags', [])
+                serialized_service[DEFAULT_SERVICE_NAME_KEY],
+                serialized_service[DEFAULT_SERVICE_PORT_KEY],
+                serialized_service[DEFAULT_SERVICE_DESCRIPTION_KEY],
+                tags=serialized_service.get(DEFAULT_SERVICE_TAGS_KEY, [])
             )
         except Exception as e:
             raise BrokenSerializedObject(e)
