@@ -1,10 +1,13 @@
-from flask import Response
+from flask import jsonify
 from flask.views import MethodView
 from controllers.routers.router_base import RouterBase
+from objects.service import Service
+from user.user_preferences import UserPreferences
+from exceptions.service_not_exists import ServiceNotExists
 
 
 class ServiceAPI(MethodView, RouterBase):
-    BASE_PATH = '/service/port/<service_port>'
+    BASE_PATH = '/service/port/<int:service_port>'
     SUPPORTED_METHODS = ['GET', 'PUT', 'POST', 'DELETE']
     API_NAME = 'service_api'
 
@@ -19,11 +22,17 @@ class ServiceAPI(MethodView, RouterBase):
         self.post = self._auth.required(self.post)
         self.delete = self._auth.required(self.delete)
 
-    def get(self):
-        # TODO info sul servizio
-        pass
+    def get(self, port: int):
+        try:
+            user_prefs: UserPreferences = self._process_orchestrator.get_user_prefs()
+            if port not in user_prefs.services:
+                raise ServiceNotExists(port)
+            service: Service = user_prefs.services[port]
+            return jsonify(service.to_dict())
+        except Exception as e:
+            return self.client_fail(e)
 
-    def put(self):
+    def put(self, service_port):
         # TODO aggiorna il servizio
         pass
 
@@ -31,6 +40,5 @@ class ServiceAPI(MethodView, RouterBase):
         # TODO crea il servizio
         pass
 
-    def delete(self):
-        # TODO elimina il servizio
+    def delete(self, service_port):
         pass
