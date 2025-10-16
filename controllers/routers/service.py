@@ -24,6 +24,12 @@ class ServiceAPI(MethodView, RouterBase):
         self._auth = auth
         self._configure_auth()
 
+    def _check_if_service_exists(self, service_port: int) -> None:
+        user_prefs = self._process_orchestrator.get_user_prefs()
+
+        if service_port not in user_prefs.services:
+            raise ServiceNotExists(service_port)
+
     def _configure_auth(self):
         self.get = self._auth.required(self.get)
         self.put = self._auth.required(self.put)
@@ -33,16 +39,23 @@ class ServiceAPI(MethodView, RouterBase):
     def get(self, service_port: int) -> Response:
         try:
             user_prefs: UserPreferences = self._process_orchestrator.get_user_prefs()
-            if service_port not in user_prefs.services:
-                raise ServiceNotExists(service_port)
+            self._check_if_service_exists(service_port)
             service: Service = user_prefs.services[service_port]
             return jsonify(service.to_dict())
         except Exception as e:
             return self.client_fail(e)
 
     def put(self, service_port: int) -> Response:
-        # TODO aggiorna il servizio
-        pass
+        try:
+            user_prefs: UserPreferences = self._process_orchestrator.get_user_prefs()
+            self._check_if_service_exists(service_port)
+
+            service: Service = user_prefs.services[service_port]
+            service.tags += request.get_json().get(DEFAULT_SERVICE_TAGS_KEY, [])
+            user_prefs.services[service_port] = service
+            return self.OK
+        except Exception as e:
+            return self.client_fail(e)
 
     def post(self, service_port: int) -> Response:
         try:
@@ -69,8 +82,7 @@ class ServiceAPI(MethodView, RouterBase):
     def delete(self, service_port: int) -> Response:
         try:
             user_prefs: UserPreferences = self._process_orchestrator.get_user_prefs()
-            if service_port not in user_prefs.services:
-                raise ServiceNotExists(service_port)
+            self._check_if_service_exists(service_port)
             
             del user_prefs.services[service_port]
             return self.OK
