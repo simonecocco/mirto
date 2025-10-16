@@ -22,12 +22,12 @@ class ServiceAPI(MethodView, RouterBase):
         self.post = self._auth.required(self.post)
         self.delete = self._auth.required(self.delete)
 
-    def get(self, port: int):
+    def get(self, service_port: int):
         try:
             user_prefs: UserPreferences = self._process_orchestrator.get_user_prefs()
-            if port not in user_prefs.services:
-                raise ServiceNotExists(port)
-            service: Service = user_prefs.services[port]
+            if service_port not in user_prefs.services:
+                raise ServiceNotExists(service_port)
+            service: Service = user_prefs.services[service_port]
             return jsonify(service.to_dict())
         except Exception as e:
             return self.client_fail(e)
@@ -43,10 +43,10 @@ class ServiceAPI(MethodView, RouterBase):
     def delete(self, service_port):
         try:
             user_prefs: UserPreferences = self._process_orchestrator.get_user_prefs()
-            if port not in user_prefs.services:
+            if service_port not in user_prefs.services:
                 raise ServiceNotExists(service_port)
             
-            del user_prefs.services[port]
+            del user_prefs.services[service_port]
             return self.OK
         except Exception as e:
             return self.client_fail(e)
