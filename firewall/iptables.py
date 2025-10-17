@@ -15,8 +15,11 @@ class IptablesRuleManager:
         prefix.append(flag)
         return prefix + rule
 
-    def _concat_insert_prefix(self, rule: List[str]) -> List[str]:
+    def _concat_append_prefix(self, rule: List[str]) -> List[str]:
         return self._concat_rule_flag_prefix('-A', rule)
+
+    def _concat_insert_prefix(self, rule: List[str]) -> List[str]:
+        return self._concat_rule_flag_prefix('-I', rule)
 
     def _concat_remove_prefix(self, rule: List[str]) -> List[str]:
         return self._concat_rule_flag_prefix('-D', rule)
@@ -27,7 +30,7 @@ class IptablesRuleManager:
             return
 
         self._added_rules.add(raw_rule)
-        complete_rule = self._concat_insert_prefix(raw_rule)
+        complete_rule = self._concat_append_prefix(raw_rule)
         self._executor.execute(complete_rule)
 
     def remove_rule(self, rule: IptablesRule):
